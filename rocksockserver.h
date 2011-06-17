@@ -19,6 +19,7 @@ typedef struct {
 	fd_set master;
 	int listensocket;
 	int maxfd;
+	int numfds;
 	void* userdata;
 	long sleeptime_us;
 } rocksockserver;

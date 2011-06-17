@@ -100,6 +100,7 @@ int rocksockserver_disconnect_client(rocksockserver* srv, int client) {
 		FD_CLR(client, &srv->master);
 		if(client == srv->maxfd)
 			srv->maxfd--;
+		srv->numfds--;
 		return 0;
 	}
 	return 1;
@@ -116,7 +117,7 @@ int rocksockserver_loop(rocksockserver* srv, char* buf, size_t bufsize,
 			int (*on_clientdisconnect) (void* userdata, int fd)
 ) {
 	fd_set read_fds, write_fds;
-	int newfd, i,k, numfds;
+	int newfd, i,k;
 	int lastfd = 3;
 	size_t j;
 	ptrdiff_t nbytes;
@@ -133,10 +134,10 @@ int rocksockserver_loop(rocksockserver* srv, char* buf, size_t bufsize,
 		read_fds = srv->master;
 		write_fds = srv->master;
 		
-		if ((numfds = select(srv->maxfd+1, &read_fds, &write_fds, NULL, NULL)) && numfds == -1) 
+		if ((srv->numfds = select(srv->maxfd+1, &read_fds, &write_fds, NULL, NULL)) && srv->numfds == -1) 
 			perror("select");
 
-		if(!numfds) continue;
+		if(!srv->numfds) continue;
 		
 		// optimization for the case searched_fd = lastfd, when we only have to handle one connection.
 		// i guess that should be the majority of cases.
@@ -157,7 +158,7 @@ int rocksockserver_loop(rocksockserver* srv, char* buf, size_t bufsize,
 						for(k = (i + j) * CHAR_BIT; k <= srv->maxfd; k++) {
 							if(FD_ISSET(k, setptr)) {
 								gotcha:
-								numfds--;
+								srv->numfds--;
 								FD_CLR(k, setptr);
 								if(setptr == &write_fds)
 									goto handlewrite;
@@ -215,7 +216,7 @@ int rocksockserver_loop(rocksockserver* srv, char* buf, size_t bufsize,
 		if(on_clientwantsdata) on_clientwantsdata(srv->userdata, k);
 
 		zzz:
-		if(numfds > 0) goto nextfd;
+		if(srv->numfds > 0) goto nextfd;
 		lastfd = k;
 		microsleep(srv->sleeptime_us);
 	}
