@@ -97,7 +97,7 @@ int rocksockserver_init(rocksockserver* srv, char* listenip, short port, void* u
 }
 
 int rocksockserver_disconnect_client(rocksockserver* srv, int client) {
-	if(client < 0 || client > FD_SETSIZE) return -1;
+	if(client < 0 || client > USER_MAX_FD) return -1;
 	if(FD_ISSET(client, &srv->master)) {
 		close(client);
 		FD_CLR(client, &srv->master);
@@ -187,7 +187,7 @@ int rocksockserver_loop(rocksockserver* srv, char* buf, size_t bufsize,
 		} else {
 			puts("hmmz. shouldnt be here");
 			printf("maxfd %d, k %d, numfds %d, set %d\n", srv->maxfd, k, srv->numfds, *(int*)(fdptr));
-			for(k = 0; k < FD_SETSIZE; k++)
+			for(k = 0; k < USER_MAX_FD; k++)
 				if(FD_ISSET(k, setptr))
 					printf("bit set: %d\n", k);
 			abort();
@@ -203,8 +203,8 @@ int rocksockserver_loop(rocksockserver* srv, char* buf, size_t bufsize,
 			if (newfd == -1) {
 				perror("accept");
 			} else {
-				if(newfd >= FD_SETSIZE) 
-					close(newfd); // only FD_SETSIZE connections can be handled.
+				if(newfd >= USER_MAX_FD) 
+					close(newfd); // only USER_MAX_FD connections can be handled.
 				else {
 					FD_SET(newfd, &srv->master);
 					if (newfd > srv->maxfd) 

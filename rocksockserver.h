@@ -15,6 +15,10 @@
 #include <sys/socket.h>
 #include <sys/select.h>
 
+#if (! defined(USER_MAX_FD)) || (USER_MAX_FD > FD_SETSIZE)
+#define USER_MAX_FD FD_SETSIZE
+#endif
+
 typedef struct {
 	fd_set master;
 	int listensocket;
@@ -33,5 +37,6 @@ int rocksockserver_loop(rocksockserver* srv, char* buf, size_t bufsize,
 			int (*on_clientwantsdata) (void* userdata, int fd),
 			int (*on_clientdisconnect) (void* userdata, int fd)
 );
+
 #endif
 
