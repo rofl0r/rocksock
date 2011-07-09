@@ -34,3 +34,4 @@ int rocksockserver_loop(rocksockserver* srv, char* buf, size_t bufsize,
 			int (*on_clientdisconnect) (void* userdata, int fd)
 );
 #endif
+

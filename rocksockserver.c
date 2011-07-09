@@ -19,10 +19,13 @@
 #include <time.h>
 #include <errno.h>
 #include <limits.h>
+#include <stdlib.h>
 
 // rocksock.h only needed for struct rs_hostInfo
 #include "rocksock.h"
 #include "rocksockserver.h"
+
+#include "endianness.h"
 
 int microsleep(long microsecs) {
 	struct timespec req, rem;
@@ -151,11 +154,15 @@ int rocksockserver_loop(rocksockserver* srv, char* buf, size_t bufsize,
 		setptr = &write_fds;
 		loopstart:
 		fdptr = (char*) setptr;
+#ifdef IS_LITTLE_ENDIAN
 		for(i = 0; i * CHAR_BIT <= srv->maxfd; i+= sizeof(size_t)) { // we assume that sizeof(fd_set) is a multiple of sizeof(size_t)
 			if( *(size_t*)(fdptr + i)) {
 				for(j = 0; j <= sizeof(size_t); j++) {
 					if(fdptr[i + j]) {
 						for(k = (i + j) * CHAR_BIT; k <= srv->maxfd; k++) {
+#else							
+						for(k = 0; k <= srv->maxfd; k++) {
+#endif
 							if(FD_ISSET(k, setptr)) {
 								gotcha:
 								srv->numfds--;
@@ -166,15 +173,24 @@ int rocksockserver_loop(rocksockserver* srv, char* buf, size_t bufsize,
 									goto handleread;
 							}
 						}
+#ifdef IS_LITTLE_ENDIAN
 					}
 				}
 			}
 		}
+		
+#endif
+
 		if(setptr == &write_fds) {
 			setptr = &read_fds;
 			goto loopstart;
 		} else {
 			puts("hmmz. shouldnt be here");
+			printf("maxfd %d, k %d, numfds %d, set %d\n", srv->maxfd, k, srv->numfds, *(int*)(fdptr));
+			for(k = 0; k < FD_SETSIZE; k++)
+				if(FD_ISSET(k, setptr))
+					printf("bit set: %d\n", k);
+			abort();
 		}
 		
 		handleread:
