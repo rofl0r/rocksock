@@ -63,6 +63,7 @@ int rocksockserver_init(rocksockserver* srv, char* listenip, short port, void* u
 	if(!srv || !listenip || !port) return -1;
 	conn.host = listenip;
 	conn.port = port;
+	FD_ZERO(&srv->master);
 	srv->userdata = userdata;
 	srv->sleeptime_us = 20000; // set a reasonable default value. it's a compromise between throughput and cpu usage basically.
 	ret = rocksockserver_resolve_host(&conn);
@@ -113,7 +114,14 @@ void rocksockserver_set_sleeptime(rocksockserver* srv, long microsecs) {
 	srv->sleeptime_us = microsecs;
 }
 
-int rocksockserver_loop(rocksockserver* srv, char* buf, size_t bufsize,
+void rocksockserver_watch_fd(rocksockserver* srv, int newfd) {
+	FD_SET(newfd, &srv->master);
+	if (newfd > srv->maxfd) 
+		srv->maxfd = newfd;
+}
+
+int rocksockserver_loop(rocksockserver* srv,
+			char* buf, size_t bufsize,
 			int (*on_clientconnect) (void* userdata, struct sockaddr_storage* clientaddr, int fd), 
 			int (*on_clientread) (void* userdata, int fd, size_t nread),
 			int (*on_clientwantsdata) (void* userdata, int fd),
@@ -213,15 +221,20 @@ int rocksockserver_loop(rocksockserver* srv, char* buf, size_t bufsize,
 				}	
 			}
 		} else {
-			if ((nbytes = recv(k, buf, bufsize, 0)) <= 0) {
-				if (nbytes == 0) {
-					if(on_clientdisconnect) on_clientdisconnect(srv->userdata, k);
+			if(buf) {
+				if ((nbytes = recv(k, buf, bufsize, 0)) <= 0) {
+					if (nbytes == 0) {
+						if(on_clientdisconnect) on_clientdisconnect(srv->userdata, k);
+					} else {
+						perror("recv");
+					}
+					rocksockserver_disconnect_client(srv, k);
 				} else {
-					perror("recv");
+					if(on_clientread) on_clientread(srv->userdata, k, nbytes);
 				}
-				rocksockserver_disconnect_client(srv, k);
 			} else {
-				if(on_clientread) on_clientread(srv->userdata, k, nbytes);
+
+				if(on_clientread) on_clientread(srv->userdata, k, 0);
 			}
 		}
 		goto zzz;

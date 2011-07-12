@@ -31,7 +31,9 @@ typedef struct {
 void rocksockserver_set_sleeptime(rocksockserver* srv, long microsecs);
 int rocksockserver_disconnect_client(rocksockserver* srv, int client);
 int rocksockserver_init(rocksockserver* srv, char* listenip, short port, void* userdata);
-int rocksockserver_loop(rocksockserver* srv, char* buf, size_t bufsize,
+void rocksockserver_watch_fd(rocksockserver* srv, int newfd);
+int rocksockserver_loop(rocksockserver* srv,
+			char* buf, size_t bufsize,
 			int (*on_clientconnect) (void* userdata, struct sockaddr_storage* clientaddr, int fd), 
 			int (*on_clientread) (void* userdata, int fd, size_t nread),
 			int (*on_clientwantsdata) (void* userdata, int fd),
