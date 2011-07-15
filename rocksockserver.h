@@ -16,6 +16,7 @@
 #include <sys/select.h>
 
 #if (! defined(USER_MAX_FD)) || (USER_MAX_FD > FD_SETSIZE)
+#undef USER_MAX_FD
 #define USER_MAX_FD FD_SETSIZE
 #endif
 
