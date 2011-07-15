@@ -10,7 +10,8 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
-#include "rocksock.h"
+#include "../rocksock.h"
+//RcB: DEP "../rocksock.c"
 
 #define checkerr if(ret) {\
 		printf("%s:%d - error #%d: %s from %s:%d\n", __FILE__, __LINE__, sock.lasterror.error, sock.lasterror.errormsg, sock.lasterror.file, sock.lasterror.line); \

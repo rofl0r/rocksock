@@ -12,7 +12,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "rocksock.h"
+#include "../rocksock.h"
+//RcB: DEP "../rocksock.c"
 
 #define checkerr if(ret) { \
 		if(sock.lasterror.failedProxy != -1) printf("failing proxy: %d\n", sock.lasterror.failedProxy); \
