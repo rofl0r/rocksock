@@ -84,7 +84,7 @@ typedef struct {
 typedef struct {
 	int socket;
 	int connected;
-	size_t timeout;
+	unsigned long timeout;
 	rs_proxy proxies[MAX_PROXIES];
 	ptrdiff_t lastproxy;
 	rs_hostInfo hostinfo;
@@ -104,7 +104,7 @@ void rocksock_init_ssl(void);
 void rocksock_free_ssl(void);
 #endif
 int rocksock_init(rocksock* sock);
-int rocksock_set_timeout(rocksock* sock, size_t timeout_millisec);
+int rocksock_set_timeout(rocksock* sock, unsigned long timeout_millisec);
 int rocksock_add_proxy(rocksock* sock, rs_proxyType proxytype, char* host, short port, char* username, char* password);
 int rocksock_connect(rocksock* sock, char* host, short port, int useSSL);
 int rocksock_send(rocksock* sock, char* buffer, size_t bufsize, size_t chunksize, size_t* byteswritten);

@@ -172,14 +172,14 @@ int rocksock_add_proxy(rocksock* sock, rs_proxyType proxytype, char* host, short
 	return rocksock_seterror(sock, RS_ET_NO_ERROR, 0, NULL, 0);
 }
 
-struct timeval* make_timeval(struct timeval* tv, size_t timeout) {
+struct timeval* make_timeval(struct timeval* tv, unsigned long timeout) {
 	if(!tv) return NULL;
 	tv->tv_sec = timeout / 1000; 
 	tv->tv_usec = 1000 * (timeout % 1000); 	
 	return tv;
 }
 
-int do_connect(rocksock* sock, rs_hostInfo* hostinfo, size_t timeout) {
+int do_connect(rocksock* sock, rs_hostInfo* hostinfo, unsigned long timeout) {
 	int flags, ret;
 	fd_set wset; 
 	struct timeval tv; 
@@ -205,7 +205,7 @@ int do_connect(rocksock* sock, rs_hostInfo* hostinfo, size_t timeout) {
 	FD_ZERO(&wset); 
 	FD_SET(sock->socket, &wset); 
 
-	ret = select(sock->socket+1, NULL, &wset, NULL, make_timeval(&tv, timeout)); 
+	ret = select(sock->socket+1, NULL, &wset, NULL, timeout ? make_timeval(&tv, timeout) : NULL); 
 
 	if(ret == 1 && FD_ISSET(sock->socket, &wset)) { 
 		ret = getsockopt(sock->socket, SOL_SOCKET, SO_ERROR, &optval,&optlen); 
@@ -447,7 +447,11 @@ int rocksock_connect(rocksock* sock, char* host, short port, int useSSL) {
 		}
 		SSL_set_fd(sock->ssl, sock->socket);
 		ret = SSL_connect(sock->ssl);
-		if(ret != 1) return rocksock_seterror(sock, RS_ET_SSL, ret, ROCKSOCK_FILENAME, __LINE__);
+		if(ret != 1) {
+			ERR_print_errors_fp(stderr);
+			//printf("%dxxx\n", SSL_get_error(sock->ssl, ret));
+			return rocksock_seterror(sock, RS_ET_SSL, ret, ROCKSOCK_FILENAME, __LINE__);
+		}
 	}
 #endif
 	return rocksock_seterror(sock, RS_ET_NO_ERROR, 0, NULL, 0);
@@ -479,16 +483,18 @@ int rocksock_operation(rocksock* sock, rs_operationType operation, char* buffer,
 	if(operation == RS_OT_SEND) wfd = &fd;
 	else rfd = &fd;
 	
-	if(operation == RS_OT_SEND)
-		ret = setsockopt(sock->socket, SOL_SOCKET, SO_SNDTIMEO, (void*) make_timeval(&tv, sock->timeout), sizeof(tv));
-	else 
-		ret = setsockopt(sock->socket, SOL_SOCKET, SO_RCVTIMEO, (void*) make_timeval(&tv, sock->timeout), sizeof(tv));
+	if(sock->timeout) {
+		if(operation == RS_OT_SEND)
+			ret = setsockopt(sock->socket, SOL_SOCKET, SO_SNDTIMEO, (void*) make_timeval(&tv, sock->timeout), sizeof(tv));
+		else 
+			ret = setsockopt(sock->socket, SOL_SOCKET, SO_RCVTIMEO, (void*) make_timeval(&tv, sock->timeout), sizeof(tv));
+	}
 	
 	if (ret == -1) return rocksock_seterror(sock, RS_ET_SYS, errno, ROCKSOCK_FILENAME, __LINE__);
 	
 	while(bytesleft) {
 		FD_SET(sock->socket, &fd);
-		ret=select(sock->socket+1, rfd, wfd, NULL, make_timeval(&tv, sock->timeout));
+		ret=select(sock->socket+1, rfd, wfd, NULL, sock->timeout ? make_timeval(&tv, sock->timeout) : NULL);
 		if(!FD_ISSET(sock->socket, &fd)) rocksock_seterror(sock, RS_ET_OWN, RS_E_NULL, ROCKSOCK_FILENAME, __LINE__); // temp test
 		if(ret == -1) {
 			//printf("h: %s, skt: %d, to: %d:%d\n", sock->hostinfo.host, sock->socket, tv.tv_sec, tv.tv_usec);
