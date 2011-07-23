@@ -9,8 +9,6 @@
 
 //RcB: DEP "../lib/logger.c"
 
-// only needed for perror()
-#include <stdio.h>
 #include <string.h>
 #include <netdb.h>
 #include <unistd.h>
@@ -58,12 +56,12 @@ int rocksockserver_resolve_host(rs_hostInfo* hostinfo) {
 	if(!ret) {
 		return 0;
 	} else {
-		log_put(0, VARISL("error resolving: "), VARICC(gai_strerror(ret)), 0);
+		log_put(0, VARISL("error resolving: "), VARICC(gai_strerror(ret)), NULL);
 		return ret;
 	}
 }
 
-int rocksockserver_init(rocksockserver* srv, char* listenip, short port, void* userdata) {
+int rocksockserver_init(rocksockserver* srv, char* listenip, unsigned short port, void* userdata) {
 	int ret = 0;
 	int yes = 1;
 	struct addrinfo* p;
@@ -99,7 +97,7 @@ int rocksockserver_init(rocksockserver* srv, char* listenip, short port, void* u
 	freeaddrinfo(conn.hostaddr);
 	// listen
 	if (listen(srv->listensocket, 10) == -1) {
-		perror("listen");
+		log_perror("listen");
 		ret = -2;
 	} else {
 		FD_SET(srv->listensocket, &srv->master);
@@ -160,7 +158,7 @@ int rocksockserver_loop(rocksockserver* srv,
 		write_fds = srv->master;
 		
 		if ((srv->numfds = select(srv->maxfd+1, &read_fds, &write_fds, NULL, NULL)) && srv->numfds == -1) 
-			perror("select");
+			log_perror("select");
 
 		if(!srv->numfds) continue;
 		
@@ -207,7 +205,7 @@ int rocksockserver_loop(rocksockserver* srv,
 			setptr = &read_fds;
 			goto loopstart;
 		} else {
-			log_puts(0, SPLITERAL("hmmz. shouldnt be here"));
+			log_puts(0, SPLITERAL("FATAL"));
 			/*
 			printf("maxfd %d, k %d, numfds %d, set %d\n", srv->maxfd, k, srv->numfds, *(int*)(fdptr));
 			for(k = 0; k < USER_MAX_FD; k++)
@@ -225,7 +223,7 @@ int rocksockserver_loop(rocksockserver* srv,
 			newfd = accept(srv->listensocket, (struct sockaddr *)&remoteaddr, &addrlen);
 
 			if (newfd == -1) {
-				perror("accept");
+				log_perror("accept");
 			} else {
 				if(newfd >= USER_MAX_FD) 
 					close(newfd); // only USER_MAX_FD connections can be handled.
@@ -242,7 +240,7 @@ int rocksockserver_loop(rocksockserver* srv,
 					if (nbytes == 0) {
 						if(on_clientdisconnect) on_clientdisconnect(srv->userdata, k);
 					} else {
-						perror("recv");
+						log_perror("recv");
 					}
 					rocksockserver_disconnect_client(srv, k);
 				} else {

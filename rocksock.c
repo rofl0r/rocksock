@@ -137,7 +137,7 @@ int rocksock_resolve_host(rocksock* sock, rs_hostInfo* hostinfo) {
 		return rocksock_seterror(sock, RS_ET_GAI, ret, ROCKSOCK_FILENAME, __LINE__);
 }
 
-int rocksock_set_timeout(rocksock* sock, size_t timeout_millisec) {
+int rocksock_set_timeout(rocksock* sock, unsigned long timeout_millisec) {
 	if (!sock) return RS_E_NULL;
 	sock->timeout = timeout_millisec;
 	return rocksock_seterror(sock, RS_ET_NO_ERROR, 0, NULL, 0);
@@ -154,7 +154,7 @@ int rocksock_init(rocksock* sock) {
 	return rocksock_seterror(sock, RS_ET_NO_ERROR, 0, NULL, 0);
 }
 
-int rocksock_add_proxy(rocksock* sock, rs_proxyType proxytype, char* host, short port, char* username, char* password) {
+int rocksock_add_proxy(rocksock* sock, rs_proxyType proxytype, char* host, unsigned short port, char* username, char* password) {
 	rs_proxy* prx;
 	if (!sock) return RS_E_NULL;
 	if(sock->lastproxy+1 >= MAX_PROXIES) return rocksock_seterror(sock, RS_ET_OWN, RS_E_EXCEED_PROXY_LIMIT, ROCKSOCK_FILENAME, __LINE__);
@@ -246,7 +246,7 @@ int rocksock_setup_socks4_header(rocksock* sock, int is4a, char* buffer, size_t 
 	return rocksock_seterror(sock, RS_ET_NO_ERROR, 0, NULL, 0);
 }
 
-int rocksock_connect(rocksock* sock, char* host, short port, int useSSL) {
+int rocksock_connect(rocksock* sock, char* host, unsigned short port, int useSSL) {
 	ptrdiff_t i;
 	int ret, trysocksv4a;
 	rs_hostInfo* connector;
@@ -470,7 +470,7 @@ int rocksock_operation(rocksock* sock, rs_operationType operation, char* buffer,
 	fd_set fd;
 	fd_set* rfd = NULL;
 	fd_set* wfd = NULL;
-	int ret;
+	int ret = 0;
 	size_t bytesleft = bufsize ? bufsize : strlen(buffer);
 	size_t byteswanted;
 	char* bufptr = buffer;
@@ -624,3 +624,4 @@ int rocksock_free(rocksock* sock) {
 		
 	return rocksock_seterror(sock, RS_ET_NO_ERROR, 0, NULL, 0);
 }
+
