@@ -7,8 +7,6 @@
  * 
  */
 
-//RcB: DEP "../lib/logger.c"
-
 #include <string.h>
 #include <netdb.h>
 #include <unistd.h>
@@ -27,9 +25,9 @@
 
 #include "endianness.h"
 
-#include "../lib/logger.h"
-#include "../lib/strlib.h"
-#include "../lib/stringptr.h"
+#include "../lib/include/logger.h"
+#include "../lib/include/strlib.h"
+#include "../lib/include/stringptr.h"
 
 int microsleep(long microsecs) {
 	struct timespec req, rem;
@@ -143,9 +141,12 @@ int rocksockserver_loop(rocksockserver* srv,
 			int (*on_clientdisconnect) (void* userdata, int fd)
 ) {
 	fd_set read_fds, write_fds;
-	int newfd, i,k;
+	int newfd, k;
 	int lastfd = 3;
+#ifdef IS_LITTLE_ENDIAN
+	int i;
 	size_t j;
+#endif
 	ptrdiff_t nbytes;
 	struct sockaddr_storage remoteaddr; // client address
 	socklen_t addrlen;

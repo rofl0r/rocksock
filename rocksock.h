@@ -118,3 +118,6 @@ int rocksock_free(rocksock* sock);
 #endif
 
 #endif
+
+//RcB: DEP "rocksock.c"
+
