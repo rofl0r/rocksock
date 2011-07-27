@@ -54,7 +54,7 @@ int rocksockserver_resolve_host(rs_hostInfo* hostinfo) {
 	if(!ret) {
 		return 0;
 	} else {
-		log_put(0, VARISL("error resolving: "), VARICC(gai_strerror(ret)), NULL);
+		log_put(1, VARISL("error resolving: "), VARICC(gai_strerror(ret)), NULL);
 		return ret;
 	}
 }
@@ -89,7 +89,7 @@ int rocksockserver_init(rocksockserver* srv, char* listenip, unsigned short port
 		break;
 	}
 	if (!p) {
-		log_puts(0, SPLITERAL("selectserver: failed to bind\n"));
+		log_puts(1, SPLITERAL("selectserver: failed to bind\n"));
 		ret = -1;
 	}
 	freeaddrinfo(conn.hostaddr);
@@ -206,7 +206,7 @@ int rocksockserver_loop(rocksockserver* srv,
 			setptr = &read_fds;
 			goto loopstart;
 		} else {
-			log_puts(0, SPLITERAL("FATAL"));
+			log_puts(2, SPLITERAL("FATAL"));
 			/*
 			printf("maxfd %d, k %d, numfds %d, set %d\n", srv->maxfd, k, srv->numfds, *(int*)(fdptr));
 			for(k = 0; k < USER_MAX_FD; k++)
