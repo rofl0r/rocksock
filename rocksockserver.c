@@ -46,21 +46,6 @@ int microsleep(long microsecs) {
 	return ret;
 }
 
-#ifdef IPV4_ONLY
-static void ipv4fromstring(char* ipstring, unsigned char* fourbytesptr) {
-	char* start = ipstring;
-	size_t outbyte = 0;
-	while(outbyte < 4) {
-		if(*ipstring == '.' || !*ipstring) {
-			fourbytesptr[outbyte] = strtoint(start, ipstring - start);
-			start = ipstring + 1;
-			outbyte++;
-		}
-		ipstring++;
-	}
-}
-#endif
-
 int rocksockserver_resolve_host(rs_hostInfo* hostinfo) {
 	if (!hostinfo || !hostinfo->host || !hostinfo->port) return -1;
 #ifndef IPV4_ONLY
@@ -73,7 +58,7 @@ int rocksockserver_resolve_host(rs_hostInfo* hostinfo) {
 	hints.ai_family = PF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_PASSIVE;
-	if(!(ports = intToString(hostinfo->port, pbuf, sizeof(pbuf)))) return -1;
+	if(!(ports = intToString(hostinfo->port, pbuf))) return -1;
 	
 	ret = getaddrinfo(hostinfo->host, ports, &hints, &hostinfo->hostaddr);
 	if(!ret) {
