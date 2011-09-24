@@ -7,10 +7,15 @@
  * 
  */
 
+#ifdef _POSIX_C_SOURCE
+#undef _POSIX_C_SOURCE
+#endif
+#define _POSIX_C_SOURCE 200809L
+
 #include <string.h>
 #include <errno.h>
 #include <stdlib.h>
-#include <stdio.h>
+//#include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/socket.h>
@@ -18,6 +23,7 @@
 #include <netinet/in.h>
 
 #include "rocksock.h"
+#include "../lib/include/strlib.h"
 
 #ifdef ROCKSOCK_FILENAME
 static const char* rs_errorMap[] = {
@@ -93,9 +99,11 @@ int rocksock_seterror(rocksock* sock, rs_errorType errortype, int error, const c
 	sock->lasterror.file = file;
 	sock->lasterror.failedProxy = -1;
 	switch(errortype) {
+#ifndef NO_DNS_SUPPORT
 		case RS_ET_GAI:
 			sock->lasterror.errormsg = (char*) gai_strerror(error);
 			break;
+#endif
 		case RS_ET_OWN:
 			if (error < RS_E_MAX_ERROR)
 				sock->lasterror.errormsg = (char*) rs_errorMap[error];
@@ -116,12 +124,15 @@ int rocksock_seterror(rocksock* sock, rs_errorType errortype, int error, const c
 	}
 	return error;
 }
-
+//#define NO_DNS_SUPPORT
 int rocksock_resolve_host(rocksock* sock, rs_hostInfo* hostinfo) {
+#ifndef NO_DNS_SUPPORT	
 	struct addrinfo hints;
 	int ret;
+#endif
 	if (!sock) return RS_E_NULL;
 	if (!hostinfo || !hostinfo->host || !hostinfo->port) return rocksock_seterror(sock, RS_ET_OWN, RS_E_NULL, ROCKSOCK_FILENAME, __LINE__);;
+#ifndef NO_DNS_SUPPORT
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = PF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
@@ -134,6 +145,16 @@ int rocksock_resolve_host(rocksock* sock, rs_hostInfo* hostinfo) {
 		return 0;
 	} else
 		return rocksock_seterror(sock, RS_ET_GAI, ret, ROCKSOCK_FILENAME, __LINE__);
+#else
+	hostinfo->hostaddr = &hostinfo->hostaddr_buf;
+	((struct sockaddr_in*) hostinfo->hostaddr->ai_addr)->sin_port = htons(hostinfo->port);
+	((struct sockaddr_in*) hostinfo->hostaddr->ai_addr)->sin_family = PF_INET;
+	hostinfo->hostaddr->ai_addr->sa_family = PF_INET;
+	hostinfo->hostaddr->ai_addrlen = sizeof(struct sockaddr_in);
+	ipv4fromstring(hostinfo->host, (unsigned char*) &((struct sockaddr_in*) hostinfo->hostaddr->ai_addr)->sin_addr);
+
+	return 0;
+#endif
 }
 
 int rocksock_set_timeout(rocksock* sock, unsigned long timeout_millisec) {
@@ -413,7 +434,7 @@ int rocksock_connect(rocksock* sock, char* host, unsigned short port, int useSSL
 					}
 					break;
 				case RS_PT_HTTP:
-					bytes = snprintf(socksdata, sizeof(socksdata), "CONNECT %s:%d HTTP/1.1\r\n\r\n", targetproxy->hostinfo.host, targetproxy->hostinfo.port);
+					bytes = ulz_snprintf(socksdata, sizeof(socksdata), "CONNECT %s:%d HTTP/1.1\r\n\r\n", targetproxy->hostinfo.host, targetproxy->hostinfo.port);
 					ret = rocksock_send(sock, socksdata, bytes, bytes, &bytes);
 					if(ret) goto proxyfailure;
 					ret = rocksock_recv(sock, socksdata, sizeof(socksdata), sizeof(socksdata), &bytes);
@@ -500,7 +521,7 @@ int rocksock_operation(rocksock* sock, rs_operationType operation, char* buffer,
 			return rocksock_seterror(sock, RS_ET_SYS, errno, ROCKSOCK_FILENAME, __LINE__);
 		}	
 		else if(!ret) return rocksock_seterror(sock, RS_ET_OWN, RS_OT_READ ? RS_E_HIT_READTIMEOUT : RS_E_HIT_WRITETIMEOUT, ROCKSOCK_FILENAME, __LINE__);
-		byteswanted = chunksize && chunksize < bytesleft ? chunksize : bytesleft;
+		byteswanted = (chunksize && chunksize < bytesleft) ? chunksize : bytesleft;
 #ifdef USE_SSL		
 		if (sock->ssl) {
 			ssl_try_again:
@@ -609,16 +630,20 @@ int rocksock_free(rocksock* sock) {
 			if(sock->proxies[i].hostinfo.host)
 				free(sock->proxies[i].hostinfo.host);
 			sock->proxies[i].hostinfo.host = NULL;
+#ifndef NO_DNS_SUPPORT
 			if(sock->proxies[i].hostinfo.hostaddr)
 				freeaddrinfo(sock->proxies[i].hostinfo.hostaddr);
+#endif
 			sock->proxies[i].hostinfo.hostaddr = NULL;
 		}
 	}
 	if(sock->hostinfo.host)
 		free(sock->hostinfo.host);
 	sock->hostinfo.host = NULL;
+#ifndef NO_DNS_SUPPORT
 	if(sock->hostinfo.hostaddr)
 		freeaddrinfo(sock->hostinfo.hostaddr);
+#endif
 	sock->hostinfo.hostaddr = NULL;
 		
 	return rocksock_seterror(sock, RS_ET_NO_ERROR, 0, NULL, 0);

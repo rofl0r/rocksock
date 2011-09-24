@@ -72,6 +72,9 @@ typedef struct {
 	char* host;
 	unsigned short port;
 	struct addrinfo* hostaddr;
+#ifdef NO_DNS_SUPPORT
+	struct addrinfo hostaddr_buf;
+#endif
 } rs_hostInfo;
 
 typedef struct {
