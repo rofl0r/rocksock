@@ -7,6 +7,10 @@
  * 
  */
 
+/*
+ * recognized defines: USE_SSL, ROCKSOCK_FILENAME, NO_DNS_SUPPORT, NO_STRDUP
+ */
+
 #ifdef _POSIX_C_SOURCE
 #undef _POSIX_C_SOURCE
 #endif
@@ -18,59 +22,14 @@
 //#include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <sys/socket.h>
 #include <sys/select.h>
-#include <netinet/in.h>
 
 #include "rocksock.h"
+#include "rocksock_internal.h"
 #include "../lib/include/strlib.h"
 
-#ifdef ROCKSOCK_FILENAME
-static const char* rs_errorMap[] = {
-	"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16"
-};
-
-#else
+#ifndef ROCKSOCK_FILENAME
 #define ROCKSOCK_FILENAME __FILE__
-
-static const char* rs_errorMap[] = {
-	// RS_E_NO_ERROR, 
-	"no error",
-	//RS_E_NULL,
-	"NULL pointer passed",
-	//RS_E_EXCEED_PROXY_LIMIT, 
-	"exceeding maximum number of proxies",
-	//RS_E_NO_SSL, 
-	"can not establish SSL connection, since library was not compiled with USE_SSL define",
-	// RS_E_NO_SOCKET
-	"socket is not set up, maybe you should call connect first",
-	// RS_E_HIT_TIMEOUT
-	"timeout reached on operation",
-	//RS_E_OUT_OF_BUFFER
-	"supplied buffer is too small",
-	// RS_E_SSL_GENERIC
-	"generic SSL error, see STDERR",
-	// RS_E_SOCKS4_NOAUTH 
-	"SOCKS4 authentication not implemented",
-	// RS_E_SOCKS5_AUTH_EXCEEDSIZE
-	"maximum length for SOCKS5 servername/password/username is 255",
-	// RS_E_SOCKS4_NO_IP6
-	"SOCKS4 is not compatible with IPv6",
-	// RS_E_PROXY_UNEXPECTED_RESPONSE
-	"the proxy sent an unexpected response",
-	// RS_E_TARGETPROXY_CONNECT_FAILED
-	"could not connect to target proxy",
-	// RS_E_PROXY_AUTH_FAILED
-	"proxy authentication failed or authd not enabled",
-	//RS_E_HIT_READTIMEOUT = 14,
-	"timeout reached on read operation",
-	//RS_E_HIT_WRITETIMEOUT = 15,
-	"timeout reached on write operation",
-	//RS_E_HIT_CONNECTTIMEOUT = 16,
-	"timeout reached on connect operation",
-
-};
-
 #endif
 
 #ifdef USE_SSL
@@ -146,7 +105,8 @@ int rocksock_resolve_host(rocksock* sock, rs_hostInfo* hostinfo) {
 	} else
 		return rocksock_seterror(sock, RS_ET_GAI, ret, ROCKSOCK_FILENAME, __LINE__);
 #else
-	hostinfo->hostaddr = &hostinfo->hostaddr_buf;
+	hostinfo->hostaddr = &(hostinfo->hostaddr_buf);
+	hostinfo->hostaddr->ai_addr = (struct sockaddr*) &(hostinfo->hostaddr_aiaddr_buf);
 	((struct sockaddr_in*) hostinfo->hostaddr->ai_addr)->sin_port = htons(hostinfo->port);
 	((struct sockaddr_in*) hostinfo->hostaddr->ai_addr)->sin_family = PF_INET;
 	hostinfo->hostaddr->ai_addr->sa_family = PF_INET;
@@ -171,24 +131,6 @@ int rocksock_init(rocksock* sock) {
 #ifdef USE_SSL
 	sock->ssl = NULL;
 #endif	
-	return rocksock_seterror(sock, RS_ET_NO_ERROR, 0, NULL, 0);
-}
-
-int rocksock_add_proxy(rocksock* sock, rs_proxyType proxytype, char* host, unsigned short port, char* username, char* password) {
-	rs_proxy* prx;
-	if (!sock) return RS_E_NULL;
-	if(sock->lastproxy+1 >= MAX_PROXIES) return rocksock_seterror(sock, RS_ET_OWN, RS_E_EXCEED_PROXY_LIMIT, ROCKSOCK_FILENAME, __LINE__);
-	if(!host) return rocksock_seterror(sock, RS_ET_OWN, RS_E_NULL, ROCKSOCK_FILENAME, __LINE__);
-	if(proxytype == RS_PT_SOCKS4 && (username || password)) rocksock_seterror(sock, RS_ET_OWN, RS_E_SOCKS4_NOAUTH, ROCKSOCK_FILENAME, __LINE__);
-	if(proxytype == RS_PT_SOCKS5 && ((username && strlen(username) > 255) || (password && strlen(password) > 255)))
-		return rocksock_seterror(sock, RS_ET_OWN, RS_E_SOCKS5_AUTH_EXCEEDSIZE, ROCKSOCK_FILENAME, __LINE__);
-	sock->lastproxy++;
-	prx = &sock->proxies[sock->lastproxy];
-	prx->hostinfo.port = port;
-	prx->proxytype = proxytype;
-	prx->hostinfo.host = strdup(host);
-	prx->username = username ? strdup(username) : NULL;
-	prx->password = password ? strdup(password) : NULL;
 	return rocksock_seterror(sock, RS_ET_NO_ERROR, 0, NULL, 0);
 }
 
@@ -281,7 +223,11 @@ int rocksock_connect(rocksock* sock, char* host, unsigned short port, int useSSL
 #ifndef USE_SSL
 	if (useSSL) return rocksock_seterror(sock, RS_ET_OWN, RS_E_NO_SSL, ROCKSOCK_FILENAME, __LINE__);
 #endif	
+#ifdef NO_STRDUP
+	sock->hostinfo.host = host;
+#else
 	sock->hostinfo.host = strdup(host);
+#endif
 	sock->hostinfo.port = port;
 	
 	if(sock->lastproxy >= 0) 
@@ -621,14 +567,16 @@ int rocksock_free(rocksock* sock) {
 	ptrdiff_t i;
 	if(sock->lastproxy >= 0) {
 		for (i=0;i<=sock->lastproxy;i++) {
+#ifndef NO_STRDUP
 			if(sock->proxies[i].username)
 				free(sock->proxies[i].username);
-			sock->proxies[i].username = NULL;
 			if(sock->proxies[i].password)
 				free(sock->proxies[i].password);
-			sock->proxies[i].password = NULL;
 			if(sock->proxies[i].hostinfo.host)
 				free(sock->proxies[i].hostinfo.host);
+#endif
+			sock->proxies[i].username = NULL;
+			sock->proxies[i].password = NULL;
 			sock->proxies[i].hostinfo.host = NULL;
 #ifndef NO_DNS_SUPPORT
 			if(sock->proxies[i].hostinfo.hostaddr)
@@ -637,8 +585,10 @@ int rocksock_free(rocksock* sock) {
 			sock->proxies[i].hostinfo.hostaddr = NULL;
 		}
 	}
+#ifndef NO_STRDUP
 	if(sock->hostinfo.host)
 		free(sock->hostinfo.host);
+#endif
 	sock->hostinfo.host = NULL;
 #ifndef NO_DNS_SUPPORT
 	if(sock->hostinfo.hostaddr)

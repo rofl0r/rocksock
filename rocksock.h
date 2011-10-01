@@ -20,6 +20,8 @@
 
 #include <stddef.h>
 #include <netdb.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
 
 #define MAX_PROXIES 16
 
@@ -74,6 +76,7 @@ typedef struct {
 	struct addrinfo* hostaddr;
 #ifdef NO_DNS_SUPPORT
 	struct addrinfo hostaddr_buf;
+	struct sockaddr_storage hostaddr_aiaddr_buf;
 #endif
 } rs_hostInfo;
 
@@ -123,4 +126,6 @@ int rocksock_free(rocksock* sock);
 #endif
 
 //RcB: DEP "rocksock.c"
+//RcB: DEP "rocksock_add_proxy.c"
+//RcB: DEP "rocksock_variables.c"
 
