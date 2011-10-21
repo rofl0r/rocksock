@@ -2,6 +2,10 @@
 #undef _POSIX_C_SOURCE
 #endif
 #define _POSIX_C_SOURCE 200809L
+#undef _GNU_SOURCE
+#define _GNU_SOURCE
+
+#include <string.h>
 
 #include "rocksock.h"
 #include "rocksock_internal.h"
@@ -9,8 +13,6 @@
 #ifndef ROCKSOCK_FILENAME
 #define ROCKSOCK_FILENAME __FILE__
 #endif
-
-#include <string.h>
 
 int rocksock_add_proxy(rocksock* sock, rs_proxyType proxytype, char* host, unsigned short port, char* username, char* password) {
 	rs_proxy* prx;
