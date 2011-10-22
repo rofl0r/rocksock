@@ -15,6 +15,8 @@
 #undef _POSIX_C_SOURCE
 #endif
 #define _POSIX_C_SOURCE 200809L
+#undef _GNU_SOURCE
+#define _GNU_SOURCE
 
 #include <string.h>
 #include <errno.h>
@@ -316,16 +318,25 @@ int rocksock_connect(rocksock* sock, char* host, unsigned short port, int useSSL
 						ret = rocksock_seterror(sock, RS_ET_OWN, RS_E_PROXY_AUTH_FAILED, ROCKSOCK_FILENAME, __LINE__);
 						goto proxyfailure;
 					} else if (socksdata[1] == 2) {
-						if(sock->proxies[i-1].username && sock->proxies[i-1].password) {
+						if( sock->proxies[i-1].username &&  sock->proxies[i-1].password &&
+						   *sock->proxies[i-1].username && *sock->proxies[i-1].password) {
+							/*
+							+----+------+----------+------+----------+
+							|VER | ULEN |  UNAME   | PLEN |  PASSWD  |
+							+----+------+----------+------+----------+
+							| 1  |  1   | 1 to 255 |  1   | 1 to 255 |
+							+----+------+----------+------+----------+
+							*/
 							p = socksdata;
 							*p++ = 1;
-							bytes = strlen(sock->proxies[i-1].username);
-							*p++ = (char) bytes;
+							bytes = strlen(sock->proxies[i-1].username) & 0xFF;
+							*p++ = bytes;
 							memcpy(p, sock->proxies[i-1].username, bytes);
-							p+=bytes;
-							bytes = strlen(sock->proxies[i-1].password);
+							p += bytes;
+							bytes = strlen(sock->proxies[i-1].password) & 0xFF;
+							*p++ = bytes;
 							memcpy(p, sock->proxies[i-1].password, bytes);
-							p+=bytes;
+							p += bytes;
 							bytes = p - socksdata;
 							ret = rocksock_send(sock, socksdata, bytes, bytes, &bytes);
 							if(ret) goto proxyfailure;
