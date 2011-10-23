@@ -358,12 +358,18 @@ int rocksock_connect(rocksock* sock, char* host, unsigned short port, int useSSL
 					*p++ = 5;
 					*p++ = 1;
 					*p++ = 0;
-					*p++ = 3;
-					bytes = strlen(targetproxy->hostinfo.host);
-					if(bytes > 255)
-						return rocksock_seterror(sock, RS_ET_OWN, RS_E_SOCKS5_AUTH_EXCEEDSIZE, ROCKSOCK_FILENAME, __LINE__);
-					*p++ = (char) bytes;
-					memcpy(p, targetproxy->hostinfo.host, bytes);
+					if(isnumericipv4(targetproxy->hostinfo.host)) {
+						*p++ = 1; // ipv4 method
+						bytes = 4;
+						ipv4fromstring(targetproxy->hostinfo.host, (unsigned char*) p);
+					} else {
+						*p++ = 3; //hostname method, requires the server to do dns lookups.
+						bytes = strlen(targetproxy->hostinfo.host);
+						if(bytes > 255)
+							return rocksock_seterror(sock, RS_ET_OWN, RS_E_SOCKS5_AUTH_EXCEEDSIZE, ROCKSOCK_FILENAME, __LINE__);
+						*p++ = (char) bytes;
+						memcpy(p, targetproxy->hostinfo.host, bytes);
+					}	
 					p+=bytes;
 					*p++ = targetproxy->hostinfo.port / 256;
 					*p++ = targetproxy->hostinfo.port % 256;
