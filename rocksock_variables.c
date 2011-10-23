@@ -1,6 +1,8 @@
 #ifdef ROCKSOCK_FILENAME
 const char* rs_errorMap[] = {
-	"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16"
+	"0" , "1" , "2" , "3" , "4" , "5" , "6" , "7", 
+	"8" , "9" , "10", "11", "12", "13", "14", "15", 
+	"16", "17", "18", "19", "20", "21", "22", "23"
 };
 
 #else
@@ -41,7 +43,20 @@ const char* rs_errorMap[] = {
 	"timeout reached on write operation",
 	//RS_E_HIT_CONNECTTIMEOUT = 16,
 	"timeout reached on connect operation",
-
+	//RS_E_PROXY_GENERAL_FAILURE = 17,
+	"proxy general failure",
+	//RS_E_TARGETPROXY_NET_UNREACHABLE = 18,
+	"proxy-target: net unreachable",
+	//RS_E_TARGETPROXY_HOST_UNREACHABLE = 19,
+	"proxy-target: host unreachable",
+	//RS_E_TARGETPROXY_CONN_REFUSED = 20,
+	"proxy-target: connection refused",
+	//RS_E_TARGETPROXY_TTL_EXPIRED = 21,
+	"proxy-target: TTL expired",
+	//RS_E_PROXY_COMMAND_NOT_SUPPORTED = 22,
+	"proxy: command not supported",
+	//RS_E_PROXY_ADDRESSTYPE_NOT_SUPPORTED = 23,
+	"proxy: addresstype not supported",
 };
 
 #endif

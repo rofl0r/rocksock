@@ -385,11 +385,29 @@ int rocksock_connect(rocksock* sock, char* host, unsigned short port, int useSSL
 					switch(socksdata[1]) {
 						case 0:
 							break;
+						case 1:
+							ret = rocksock_seterror(sock, RS_ET_OWN, RS_E_PROXY_GENERAL_FAILURE, ROCKSOCK_FILENAME, __LINE__);
+							goto proxyfailure;
 						case 2:
 							ret = rocksock_seterror(sock, RS_ET_OWN, RS_E_PROXY_AUTH_FAILED, ROCKSOCK_FILENAME, __LINE__);
 							goto proxyfailure;
-						case 3: case 4: case 5: case 6:
-							ret = rocksock_seterror(sock, RS_ET_OWN, RS_E_TARGETPROXY_CONNECT_FAILED, ROCKSOCK_FILENAME, __LINE__);
+						case 3:
+							ret = rocksock_seterror(sock, RS_ET_OWN, RS_E_TARGETPROXY_NET_UNREACHABLE, ROCKSOCK_FILENAME, __LINE__);
+							goto proxyfailure;
+						case 4:
+							ret = rocksock_seterror(sock, RS_ET_OWN, RS_E_TARGETPROXY_HOST_UNREACHABLE, ROCKSOCK_FILENAME, __LINE__);
+							goto proxyfailure;
+						case 5:
+							ret = rocksock_seterror(sock, RS_ET_OWN, RS_E_TARGETPROXY_CONN_REFUSED, ROCKSOCK_FILENAME, __LINE__);
+							goto proxyfailure;
+						case 6:
+							ret = rocksock_seterror(sock, RS_ET_OWN, RS_E_TARGETPROXY_TTL_EXPIRED, ROCKSOCK_FILENAME, __LINE__);
+							goto proxyfailure;
+						case 7:
+							ret = rocksock_seterror(sock, RS_ET_OWN, RS_E_PROXY_COMMAND_NOT_SUPPORTED, ROCKSOCK_FILENAME, __LINE__);
+							goto proxyfailure;
+						case 8:
+							ret = rocksock_seterror(sock, RS_ET_OWN, RS_E_PROXY_ADDRESSTYPE_NOT_SUPPORTED, ROCKSOCK_FILENAME, __LINE__);
 							goto proxyfailure;
 						default:
 							ret = rocksock_seterror(sock, RS_ET_OWN, RS_E_PROXY_UNEXPECTED_RESPONSE, ROCKSOCK_FILENAME, __LINE__);
