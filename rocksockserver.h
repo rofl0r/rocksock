@@ -45,5 +45,5 @@ int rocksockserver_loop(rocksockserver* srv,
 
 #endif
 
-//RcB: DEP "rocksockserver.c"
+//RcB: DEP "rocksockserver*.c"
 

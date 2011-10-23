@@ -23,9 +23,12 @@
 
 #include "endianness.h"
 
+#ifndef NO_LOG
 #include "../lib/include/logger.h"
+#endif
 #include "../lib/include/strlib.h"
 #include "../lib/include/stringptr.h"
+#include "../lib/include/timelib.h"
 
 typedef struct {
 	char* host;
@@ -36,15 +39,6 @@ typedef struct {
 	struct sockaddr_in hostaddr;
 #endif
 } rs_hostInfo;
-
-int microsleep(long microsecs) {
-	struct timespec req, rem;
-	req.tv_sec = microsecs / 1000000;
-	req.tv_nsec = (microsecs % 1000000) * 1000;
-	int ret;
-	while((ret = nanosleep(&req, &rem)) == -1 && errno == EINTR) req = rem;
-	return ret;
-}
 
 int rocksockserver_resolve_host(rs_hostInfo* hostinfo) {
 	if (!hostinfo || !hostinfo->host || !hostinfo->port) return -1;
@@ -64,7 +58,9 @@ int rocksockserver_resolve_host(rs_hostInfo* hostinfo) {
 	if(!ret) {
 		return 0;
 	} else {
+		#ifndef NO_LOG
 		log_put(1, VARISL("error resolving: "), VARICC(gai_strerror(ret)), NULL);
+		#endif
 		return ret;
 	}
 #else
@@ -107,27 +103,36 @@ int rocksockserver_init(rocksockserver* srv, char* listenip, unsigned short port
 		break;
 	}
 	if (!p) {
+		# ifndef NO_LOG
 		log_puts(1, SPLITERAL("selectserver: failed to bind\n"));
+		# endif
 		ret = -1;
 	}
 	freeaddrinfo(conn.hostaddr);
+	if(ret == -1) return -1;
 #else
 	srv->listensocket = socket(AF_INET, SOCK_STREAM, 0);
 	if(srv->listensocket < 0) {
+		# ifndef NO_LOG
 		log_perror("socket");
+		# endif
 		return -1;
 	}
 	setsockopt(srv->listensocket, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
 	if(bind(srv->listensocket, (struct sockaddr*) &conn.hostaddr, sizeof(struct sockaddr_in)) < 0) {
 		close(srv->listensocket);
+		# ifndef NO_LOG
 		log_perror("bind");
+		# endif
 		return -1;
 	}
 	
 #endif
 	// listen
 	if (listen(srv->listensocket, 10) == -1) {
+#ifndef NO_LOG
 		log_perror("listen");
+#endif
 		ret = -2;
 	} else {
 		FD_SET(srv->listensocket, &srv->master);
@@ -149,20 +154,10 @@ int rocksockserver_disconnect_client(rocksockserver* srv, int client) {
 	return 1;
 }
 
-void rocksockserver_set_sleeptime(rocksockserver* srv, long microsecs) {
-	srv->sleeptime_us = microsecs;
-}
-
 void rocksockserver_watch_fd(rocksockserver* srv, int newfd) {
 	FD_SET(newfd, &srv->master);
 	if (newfd > srv->maxfd) 
 		srv->maxfd = newfd;
-}
-
-// pass the reading end of a pipe
-void rocksockserver_set_signalfd(rocksockserver* srv, int signalfd) {
-	srv->signalfd = signalfd;
-	rocksockserver_watch_fd(srv, signalfd);
 }
 
 int rocksockserver_loop(rocksockserver* srv,
@@ -191,7 +186,11 @@ int rocksockserver_loop(rocksockserver* srv,
 		write_fds = srv->master;
 		
 		if ((srv->numfds = select(srv->maxfd+1, &read_fds, &write_fds, NULL, NULL)) && srv->numfds == -1) 
+#ifndef NO_LOG
 			log_perror("select");
+#else
+			;
+#endif
 
 		if(!srv->numfds) continue;
 		
@@ -238,14 +237,20 @@ int rocksockserver_loop(rocksockserver* srv,
 			setptr = &read_fds;
 			goto loopstart;
 		} else {
+#ifndef NO_LOG
 			log_puts(2, SPLITERAL("FATAL"));
+#endif
 			/*
 			printf("maxfd %d, k %d, numfds %d, set %d\n", srv->maxfd, k, srv->numfds, *(int*)(fdptr));
 			for(k = 0; k < USER_MAX_FD; k++)
 				if(FD_ISSET(k, setptr))
 					printf("bit set: %d\n", k);
 			*/
+#ifndef NO_ABORT
 			abort();
+#else
+			exit(111);
+#endif
 		}
 		
 		handleread:
@@ -256,7 +261,9 @@ int rocksockserver_loop(rocksockserver* srv,
 			newfd = accept(srv->listensocket, (struct sockaddr *)&remoteaddr, &addrlen);
 
 			if (newfd == -1) {
+#ifndef NO_LOG
 				log_perror("accept");
+#endif
 			} else {
 				if(newfd >= USER_MAX_FD) 
 					close(newfd); // only USER_MAX_FD connections can be handled.
@@ -273,7 +280,9 @@ int rocksockserver_loop(rocksockserver* srv,
 					if (nbytes == 0) {
 						if(on_clientdisconnect) on_clientdisconnect(srv->userdata, k);
 					} else {
+#ifndef NO_LOG
 						log_perror("recv");
+#endif
 					}
 					rocksockserver_disconnect_client(srv, k);
 				} else {
