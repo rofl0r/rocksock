@@ -218,7 +218,7 @@ int rocksock_connect(rocksock* sock, char* host, unsigned short port, int useSSL
 	rs_proxy* targetproxy;
 	char socksdata[768];
 	char* p;
-	size_t socksused, bytes;
+	size_t socksused = 0, bytes;
 	if (!sock) return RS_E_NULL;
 	if (!host || !port) 
 		return rocksock_seterror(sock, RS_ET_OWN, RS_E_NULL, ROCKSOCK_FILENAME, __LINE__);
@@ -519,7 +519,7 @@ int rocksock_operation(rocksock* sock, rs_operationType operation, char* buffer,
 		} else
 #endif		
 		if(operation == RS_OT_SEND) 
-			ret = send(sock->socket, bufptr, byteswanted, 0);
+			ret = send(sock->socket, bufptr, byteswanted, MSG_NOSIGNAL);
 		else
 			ret = recv(sock->socket, bufptr, byteswanted, 0);
 		
@@ -548,6 +548,42 @@ int rocksock_send(rocksock* sock, char* buffer, size_t bufsize, size_t chunksize
 
 int rocksock_recv(rocksock* sock, char* buffer, size_t bufsize, size_t chunksize, size_t* bytesread) {
 	return rocksock_operation(sock, RS_OT_READ, buffer, bufsize, chunksize, bytesread);
+}
+
+//TODO proper error handling
+#include <stdio.h>
+int rocksock_peek(rocksock* sock) {
+	ssize_t readv;
+	char buf[4];
+#ifdef USE_SSL
+	if(sock->ssl)
+		readv = SSL_peek(sock->ssl, buf, 1);
+	else 
+#endif
+
+{
+	fd_set readfds;
+	
+	struct timeval tv;
+	tv.tv_sec = 0;
+	tv.tv_usec = 1;
+	FD_ZERO(&readfds);
+	FD_SET(sock->socket, &readfds);
+	readv = select(sock->socket + 1, &readfds, NULL, NULL, &tv);
+	return FD_ISSET(sock->socket, &readfds);
+}
+
+/*	readv = recvfrom(sock->socket, buf, 1, MSG_PEEK | MSG_DONTWAIT | MSG_TRUNC, NULL, NULL);
+	if(readv == -1 && errno != EAGAIN) {// && errno != EWOULDBLOCK) {
+#ifdef USE_SSL
+		if(sock->ssl)
+			ERR_print_errors_fp(stderr);
+		else
+#endif
+		perror("peek");
+	}
+*/	
+	return readv < 0 ? -1 : !!readv;
 }
 
 // tries to read exactly one line, until '\n', then appends a '\0'
@@ -597,7 +633,7 @@ int rocksock_disconnect(rocksock* sock) {
 	return rocksock_seterror(sock, RS_ET_NO_ERROR, 0, NULL, 0);
 }
 
-int rocksock_free(rocksock* sock) {
+int rocksock_clear(rocksock* sock) {
 	if (!sock) return RS_E_NULL;
 	ptrdiff_t i;
 	if(sock->lastproxy >= 0) {

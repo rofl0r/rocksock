@@ -104,7 +104,7 @@ int main(int argc, char** argv) {
 	if(bytesread) puts(inbuf);
 	
 	rocksock_disconnect(psock);
-	rocksock_free(psock);
+	rocksock_clear(psock);
 #ifdef USE_SSL
 	rocksock_free_ssl();
 #endif		
