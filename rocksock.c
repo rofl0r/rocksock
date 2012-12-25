@@ -25,6 +25,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/select.h>
+#include <netinet/in.h>
 
 #include "rocksock.h"
 #include "rocksock_internal.h"
