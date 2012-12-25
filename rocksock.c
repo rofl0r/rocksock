@@ -35,6 +35,10 @@
 #define ROCKSOCK_FILENAME __FILE__
 #endif
 
+#ifndef MSG_NOSIGNAL
+#define MSG_NOSIGNAL 0
+#endif
+
 #ifdef USE_SSL
 	
 void rocksock_init_ssl(void) {
