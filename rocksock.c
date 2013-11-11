@@ -89,7 +89,7 @@ int rocksock_seterror(rocksock* sock, rs_errorType errortype, int error, const c
 	return error;
 }
 //#define NO_DNS_SUPPORT
-int rocksock_resolve_host(rocksock* sock, rs_hostInfo* hostinfo) {
+static int rocksock_resolve_host(rocksock* sock, rs_hostInfo* hostinfo) {
 #ifndef NO_DNS_SUPPORT
 	struct addrinfo hints;
 	int ret;
@@ -139,14 +139,14 @@ int rocksock_init(rocksock* sock) {
 	return rocksock_seterror(sock, RS_ET_NO_ERROR, 0, NULL, 0);
 }
 
-struct timeval* make_timeval(struct timeval* tv, unsigned long timeout) {
+static struct timeval* make_timeval(struct timeval* tv, unsigned long timeout) {
 	if(!tv) return NULL;
 	tv->tv_sec = timeout / 1000;
 	tv->tv_usec = 1000 * (timeout % 1000);
 	return tv;
 }
 
-int do_connect(rocksock* sock, rs_hostInfo* hostinfo, unsigned long timeout) {
+static int do_connect(rocksock* sock, rs_hostInfo* hostinfo, unsigned long timeout) {
 	int flags, ret;
 	fd_set wset;
 	struct timeval tv;
@@ -184,7 +184,7 @@ int do_connect(rocksock* sock, rs_hostInfo* hostinfo, unsigned long timeout) {
 	return rocksock_seterror(sock, RS_ET_SYS, errno, ROCKSOCK_FILENAME, __LINE__);
 }
 
-int rocksock_setup_socks4_header(rocksock* sock, int is4a, char* buffer, size_t bufsize, rs_proxy* proxy, size_t* bytesused) {
+static int rocksock_setup_socks4_header(rocksock* sock, int is4a, char* buffer, size_t bufsize, rs_proxy* proxy, size_t* bytesused) {
 	int ret;
 	buffer[0] = 4;
 	buffer[1] = 1;
@@ -466,7 +466,7 @@ typedef enum  {
 	RS_OT_READ
 } rs_operationType;
 
-int rocksock_operation(rocksock* sock, rs_operationType operation, char* buffer, size_t bufsize, size_t chunksize, size_t* bytes) {
+static int rocksock_operation(rocksock* sock, rs_operationType operation, char* buffer, size_t bufsize, size_t chunksize, size_t* bytes) {
 	if (!sock) return RS_E_NULL;
 	if (!buffer || !bytes || (!bufsize && operation == RS_OT_READ)) return rocksock_seterror(sock, RS_ET_OWN, RS_E_NULL, ROCKSOCK_FILENAME, __LINE__);
 	*bytes = 0;
