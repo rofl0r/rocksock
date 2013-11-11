@@ -553,38 +553,6 @@ int rocksock_recv(rocksock* sock, char* buffer, size_t bufsize, size_t chunksize
 	return rocksock_operation(sock, RS_OT_READ, buffer, bufsize, chunksize, bytesread);
 }
 
-// tries to read exactly one line, until '\n', then appends a '\0'
-int rocksock_readline(rocksock* sock, char* buffer, size_t bufsize, size_t* bytesread) {
-	// TODO: make more efficient by peeking into the buffer (Flag MSG_PEEK to recv), instead of reading byte by byte
-	// would need a different approach for ssl though.
-	if (!sock) return RS_E_NULL;
-	if (!buffer || !bufsize || !bytesread) return rocksock_seterror(sock, RS_ET_OWN, RS_E_NULL, ROCKSOCK_FILENAME, __LINE__);	
-	char* ptr = buffer;
-	size_t bytesread2 = 0;
-	int ret;
-	*bytesread = 0;
-	while(*bytesread < bufsize) {
-		ret = rocksock_recv(sock, ptr, 1, 1, &bytesread2);
-		if(ret) return ret;
-		*bytesread += bytesread2;
-		if(ptr > buffer + bufsize)
-			break;
-		if(*bytesread > bufsize) {
-			*bytesread = bufsize;
-			break;
-		}
-		if(*ptr == '\n') {
-			if(*bytesread < bufsize) {
-				buffer[*bytesread] = '\0';
-				return 0;
-			} else
-				break;
-		}
-		ptr++;
-	}
-	return rocksock_seterror(sock, RS_ET_OWN, RS_E_OUT_OF_BUFFER, ROCKSOCK_FILENAME, __LINE__);
-}
-
 int rocksock_disconnect(rocksock* sock) {
 	if (!sock) return RS_E_NULL;
 #ifdef USE_SSL

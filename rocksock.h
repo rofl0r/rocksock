@@ -146,4 +146,5 @@ void rocksock_free(rocksock* s);
 //RcB: DEP "rocksock_add_proxy.c"
 //RcB: DEP "rocksock_variables.c"
 //RcB: DEP "rocksock_dynamic.c"
+//RcB: DEP "rocksock_readline.c"
 
