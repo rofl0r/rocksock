@@ -553,42 +553,6 @@ int rocksock_recv(rocksock* sock, char* buffer, size_t bufsize, size_t chunksize
 	return rocksock_operation(sock, RS_OT_READ, buffer, bufsize, chunksize, bytesread);
 }
 
-//TODO proper error handling
-#include <stdio.h>
-int rocksock_peek(rocksock* sock) {
-	ssize_t readv;
-	char buf[4];
-#ifdef USE_SSL
-	if(sock->ssl)
-		readv = SSL_peek(sock->ssl, buf, 1);
-	else
-#endif
-
-{
-	fd_set readfds;
-
-	struct timeval tv;
-	tv.tv_sec = 0;
-	tv.tv_usec = 1;
-	FD_ZERO(&readfds);
-	FD_SET(sock->socket, &readfds);
-	readv = select(sock->socket + 1, &readfds, NULL, NULL, &tv);
-	return FD_ISSET(sock->socket, &readfds);
-}
-
-/*	readv = recvfrom(sock->socket, buf, 1, MSG_PEEK | MSG_DONTWAIT | MSG_TRUNC, NULL, NULL);
-	if(readv == -1 && errno != EAGAIN) {// && errno != EWOULDBLOCK) {
-#ifdef USE_SSL
-		if(sock->ssl)
-			ERR_print_errors_fp(stderr);
-		else
-#endif
-		perror("peek");
-	}
-*/
-	return readv < 0 ? -1 : !!readv;
-}
-
 // tries to read exactly one line, until '\n', then appends a '\0'
 int rocksock_readline(rocksock* sock, char* buffer, size_t bufsize, size_t* bytesread) {
 	// TODO: make more efficient by peeking into the buffer (Flag MSG_PEEK to recv), instead of reading byte by byte
