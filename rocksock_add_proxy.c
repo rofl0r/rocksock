@@ -26,7 +26,7 @@ int rocksock_add_proxy(rocksock* sock, rs_proxyType proxytype, char* host, unsig
 	prx = &sock->proxies[sock->lastproxy];
 	prx->hostinfo.port = port;
 	prx->proxytype = proxytype;
-#ifndef NO_STRDUP	
+#ifndef NO_STRDUP
 	prx->hostinfo.host = strdup(host);
 	prx->username = username ? strdup(username) : NULL;
 	prx->password = password ? strdup(password) : NULL;

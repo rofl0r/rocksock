@@ -1,12 +1,12 @@
 // g++ -Wall -g rocksock.c rocksock_test.cpp -o rocksock_test -lpthread
 
 /*
- * 
+ *
  * author: rofl0r
- * 
+ *
  * License: LGPL 2.1+ with static linking exception
- * 
- * 
+ *
+ *
  */
 
 #include <iostream>
@@ -27,7 +27,7 @@ int msleep(long millisecs) {
 	req.tv_nsec = (millisecs % 1000) * 1000 * 1000;
 	int ret;
 	while((ret = nanosleep(&req, &rem)) == -1 && errno == EINTR) req = rem;
-	return ret;	
+	return ret;
 }
 
 using namespace std;
@@ -140,7 +140,7 @@ int scanRange(std::string ip, int port, int max_threads) {
 	for (int i = 0; i < 255; i++) {
 		if (data[i].status > 0) cout << data[i].host << endl;
 	}
-	
+
 	pthread_mutex_destroy(&mutex);
 	return 0;
 }
