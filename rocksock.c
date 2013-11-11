@@ -372,7 +372,7 @@ int rocksock_connect(rocksock* sock, char* host, unsigned short port, int useSSL
 						bytes = strlen(targetproxy->hostinfo.host);
 						if(bytes > 255)
 							return rocksock_seterror(sock, RS_ET_OWN, RS_E_SOCKS5_AUTH_EXCEEDSIZE, ROCKSOCK_FILENAME, __LINE__);
-						*p++ = (char) bytes;
+						*p++ = bytes;
 						memcpy(p, targetproxy->hostinfo.host, bytes);
 					}
 					p+=bytes;
