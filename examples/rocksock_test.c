@@ -1,4 +1,4 @@
-// g++ -Wall -g rocksock.c rocksock_test.cpp -o rocksock_test -lpthread
+// use rcb to compile: rcb rocksock_test.c
 
 /*
  *
@@ -9,28 +9,15 @@
  *
  */
 
-#include <iostream>
-#include <sstream>
-
-extern "C" {
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <pthread.h>
 #include <errno.h>
 #include <time.h>
-#include "rocksock.h"
-}
-int msleep(long millisecs) {
-	struct timespec req, rem;
-	req.tv_sec = millisecs / 1000;
-	req.tv_nsec = (millisecs % 1000) * 1000 * 1000;
-	int ret;
-	while((ret = nanosleep(&req, &rem)) == -1 && errno == EINTR) req = rem;
-	return ret;
-}
+#include "../rocksock.h"
 
-using namespace std;
+//RcB: LINK "-lpthread"
 
 typedef struct {
 	char host[16];
@@ -38,11 +25,11 @@ typedef struct {
 	int status;
 } threaddata;
 
-int done = 0;
-pthread_mutex_t mutex;
+static int done = 0;
+static pthread_mutex_t mutex;
 
-void* scanHost(void* arg) {
-	threaddata* d = (threaddata*) arg;
+static void* scanHost(void* arg) {
+	threaddata* d = arg;
 	rocksock skt;
 	rocksock* soc = &skt;
 	rocksock_init(soc);
@@ -56,29 +43,17 @@ void* scanHost(void* arg) {
 	}
 
 	rocksock_disconnect(soc);
-	rocksock_free(soc);
+	rocksock_clear(soc);
 
 	pthread_mutex_lock(&mutex);
 	done++;
 	pthread_mutex_unlock(&mutex);
-	return NULL;
+	return 0;
 }
-
-
-std::string intToString(int i)
-{
-    std::stringstream ss;
-    std::string s;
-    ss << i;
-    s = ss.str();
-
-    return s;
-}
-
 
 int running(pthread_t* t, int max) {
-	int res = 0;
-	for (int i = 0; i <= max; i++) {
+	int res = 0, i = 0;
+	for (; i <= max; i++) {
 		if (t[i]) res++;
 	}
 	return res;
@@ -86,8 +61,8 @@ int running(pthread_t* t, int max) {
 
 int joinThreads(pthread_t* threads, int max) {
 	void* exitstate;
-
-	for(int i=0;i<max;i++) {
+	int i = 0;
+	for(;i<max;i++) {
 		if (threads[i]) {
 			if (!pthread_join(threads[i], &exitstate)) {
 				threads[i] = 0;
@@ -98,13 +73,11 @@ int joinThreads(pthread_t* threads, int max) {
 	return 0;
 }
 
-int scanRange(std::string ip, int port, int max_threads) {
+int scanRange(const char *ip, int port, int max_threads) {
 
 	int maxthreads = max_threads > 254 ? 254 : max_threads;
-	pthread_t threads[255];
-	memset(threads, 0, sizeof(threads));
-	threaddata data[255];
-	memset(data, 0, sizeof(data));
+	pthread_t threads[255] = {0};
+	threaddata data[255] = {0};
 
 	pthread_attr_t attr;
 	size_t stack;
@@ -118,9 +91,8 @@ int scanRange(std::string ip, int port, int max_threads) {
 	volatile int x = 1;
 	while(done < 254) {
 		while(x < 255 && running((pthread_t*) threads, x) < maxthreads) {
-			string myhost = ip + "." + intToString(x) ;
 			threaddata* d = &data[x];
-			strcpy(d->host, myhost.c_str());
+			snprintf(d->host, sizeof(d->host), "%s.%d", ip, x);
 			d->port = port;
 			d->status = -1;
 			if (!pthread_create(&threads[x], &attr, scanHost, &data[x])) {
@@ -130,15 +102,16 @@ int scanRange(std::string ip, int port, int max_threads) {
 				break;
 			}
 		}
-		joinThreads((pthread_t*) threads, x);
+		joinThreads(threads, x);
 	}
 
-	joinThreads((pthread_t*) threads, x);
+	joinThreads(threads, x);
 
 	pthread_attr_destroy(&attr);
 
-	for (int i = 0; i < 255; i++) {
-		if (data[i].status > 0) cout << data[i].host << endl;
+	int i = 0;
+	for (; i < 255; i++) {
+		if (data[i].status > 0) dprintf(1, "%s\n", data[i].host);
 	}
 
 	pthread_mutex_destroy(&mutex);
@@ -147,15 +120,15 @@ int scanRange(std::string ip, int port, int max_threads) {
 
 int main(int argc, char** argv) {
 	if (argc < 4) {
-		cout << "multithreaded subnet portscanner" << endl;
-		cout << "inv. syntax" << endl;
-		cout << argv[0] << " 127.0.0 22 16" << endl;
-		cout << "subnetA port maxthreads" << endl;
+		dprintf(2, "multithreaded subnet portscanner\n"
+		           "inv. syntax\n"
+		           "%s 127.0.0 22 16\n"
+		           "subnetA port maxthreads\n", argv[0]);
 		exit(1);
 	}
 
 	int port = atoi(argv[2]);
-	string ip = argv[1];
+	char* ip = argv[1];
 	int maxthreads = atoi(argv[3]);
 
 	scanRange(ip, port, maxthreads);
