@@ -1,10 +1,6 @@
 /*
- *
- * author: rofl0r
- *
+ * author: rofl0r (C) 2011-2013
  * License: LGPL 2.1+ with static linking exception
- *
- *
  */
 
 /*
@@ -38,21 +34,7 @@
 #endif
 
 #ifdef USE_SSL
-
-void rocksock_init_ssl(void) {
-	SSL_library_init();
-	SSL_load_error_strings();
-	SSLeay_add_ssl_algorithms();
-}
-
-void rocksock_free_ssl(void) {
-	// TODO: there are still 3 memblocks allocated from SSL_library_init (88 bytes)
-	ERR_remove_state(0);
-	ERR_free_strings();
-	EVP_cleanup();
-	CRYPTO_cleanup_all_ex_data();
-}
-
+#include "rocksock_ssl_internal.h"
 #endif
 
 int rocksock_seterror(rocksock* sock, rs_errorType errortype, int error, const char* file, int line) {
@@ -79,7 +61,7 @@ int rocksock_seterror(rocksock* sock, rs_errorType errortype, int error, const c
 			break;
 #ifdef USE_SSL
 		case RS_ET_SSL:
-			sock->lasterror.errormsg = (char*) ERR_reason_error_string(SSL_get_error(sock->ssl, error));
+			sock->lasterror.errormsg = (char*) rocksock_ssl_strerror(sock, error);
 			break;
 #endif
 		default:
@@ -133,9 +115,6 @@ int rocksock_init(rocksock* sock) {
 	memset(sock, 0, sizeof(rocksock));
 	sock->lastproxy = -1;
 	sock->timeout = 60*1000;
-#ifdef USE_SSL
-	sock->ssl = NULL;
-#endif
 	return rocksock_seterror(sock, RS_ET_NO_ERROR, 0, NULL, 0);
 }
 
@@ -439,23 +418,8 @@ int rocksock_connect(rocksock* sock, char* host, unsigned short port, int useSSL
 	}
 #ifdef USE_SSL
 	if(useSSL) {
-		sock->sslctx = SSL_CTX_new(SSLv23_client_method());
-		if (!sock->sslctx) {
-			ERR_print_errors_fp(stderr);
-			return rocksock_seterror(sock, RS_ET_OWN, RS_E_SSL_GENERIC, ROCKSOCK_FILENAME, __LINE__);
-		}
-		sock->ssl = SSL_new(sock->sslctx);
-		if (!sock->ssl) {
-			ERR_print_errors_fp(stderr);
-			return rocksock_seterror(sock, RS_ET_OWN, RS_E_SSL_GENERIC, ROCKSOCK_FILENAME, __LINE__);
-		}
-		SSL_set_fd(sock->ssl, sock->socket);
-		ret = SSL_connect(sock->ssl);
-		if(ret != 1) {
-			ERR_print_errors_fp(stderr);
-			//printf("%dxxx\n", SSL_get_error(sock->ssl, ret));
-			return rocksock_seterror(sock, RS_ET_SSL, ret, ROCKSOCK_FILENAME, __LINE__);
-		}
+		ret = rocksock_ssl_connect_fd(sock);
+		if(ret) return ret;
 	}
 #endif
 	return rocksock_seterror(sock, RS_ET_NO_ERROR, 0, NULL, 0);
@@ -478,10 +442,6 @@ static int rocksock_operation(rocksock* sock, rs_operationType operation, char* 
 	size_t bytesleft = bufsize ? bufsize : strlen(buffer);
 	size_t byteswanted;
 	char* bufptr = buffer;
-#ifdef USE_SSL
-	unsigned long sslerr, sslretryerr;
-	sslretryerr = operation == RS_OT_SEND ? SSL_ERROR_WANT_WRITE : SSL_ERROR_WANT_READ;
-#endif
 
 	if (!sock->socket) return rocksock_seterror(sock, RS_ET_OWN, RS_E_NO_SOCKET, ROCKSOCK_FILENAME, __LINE__);
 	if(operation == RS_OT_SEND) wfd = &fd;
@@ -508,16 +468,10 @@ static int rocksock_operation(rocksock* sock, rs_operationType operation, char* 
 		byteswanted = (chunksize && chunksize < bytesleft) ? chunksize : bytesleft;
 #ifdef USE_SSL
 		if (sock->ssl) {
-			ssl_try_again:
 			if(operation == RS_OT_SEND)
-				ret = SSL_write(sock->ssl, bufptr, byteswanted);
+				ret = rocksock_ssl_send(sock, bufptr, byteswanted);
 			else
-				ret = SSL_read(sock->ssl, bufptr, byteswanted);
-			if(ret <= 0) {
-				sslerr = SSL_get_error(sock->ssl, ret);
-				if(sslerr == sslretryerr) goto ssl_try_again;
-			}
-			goto ssl_done;
+				ret = rocksock_ssl_recv(sock, bufptr, byteswanted);
 
 		} else
 #endif
@@ -534,9 +488,7 @@ static int rocksock_operation(rocksock* sock, rs_operationType operation, char* 
 			if(ret == EWOULDBLOCK || ret == EINPROGRESS) return rocksock_seterror(sock, RS_ET_OWN, RS_OT_READ ? RS_E_HIT_READTIMEOUT : RS_E_HIT_WRITETIMEOUT, ROCKSOCK_FILENAME, __LINE__);
 			return rocksock_seterror(sock, RS_ET_SYS, errno, ROCKSOCK_FILENAME, __LINE__);
 		}
-#ifdef USE_SSL
-		ssl_done:
-#endif
+
 		bytesleft -= ret;
 		bufptr += ret;
 		*bytes += ret;
@@ -556,12 +508,7 @@ int rocksock_recv(rocksock* sock, char* buffer, size_t bufsize, size_t chunksize
 int rocksock_disconnect(rocksock* sock) {
 	if (!sock) return RS_E_NULL;
 #ifdef USE_SSL
-	if(sock->ssl) {
-		SSL_shutdown(sock->ssl);
-		SSL_free(sock->ssl);
-		SSL_CTX_free(sock->sslctx);
-		sock->ssl = NULL;
-	}
+	rocksock_ssl_free_context(sock);
 #endif
 	if(sock->socket) close(sock->socket);
 	sock->socket = 0;

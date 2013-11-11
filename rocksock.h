@@ -1,22 +1,10 @@
 /*
- *
  * author: rofl0r
- *
  * License: LGPL 2.1+ with static linking exception
- *
- *
  */
 
 #ifndef _ROCKSOCK_H_
 #define _ROCKSOCK_H_
-
-#ifdef USE_SSL
-#include <openssl/crypto.h>
-#include <openssl/x509.h>
-#include <openssl/pem.h>
-#include <openssl/ssl.h>
-#include <openssl/err.h>
-#endif
 
 #include <stddef.h>
 #include <netdb.h>
@@ -102,10 +90,8 @@ typedef struct {
 	ptrdiff_t lastproxy;
 	rs_hostInfo hostinfo;
 	rs_errorInfo lasterror;
-#ifdef USE_SSL
-	SSL* ssl;
-	SSL_CTX* sslctx;
-#endif
+	void *ssl;
+	void *sslctx;
 } rocksock;
 
 #ifdef __cplusplus
