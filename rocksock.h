@@ -1,10 +1,10 @@
 /*
- * 
+ *
  * author: rofl0r
- * 
+ *
  * License: LGPL 2.1+ with static linking exception
- * 
- * 
+ *
+ *
  */
 
 #ifndef _ROCKSOCK_H_
@@ -15,7 +15,7 @@
 #include <openssl/x509.h>
 #include <openssl/pem.h>
 #include <openssl/ssl.h>
-#include <openssl/err.h> 
+#include <openssl/err.h>
 #endif
 
 #include <stddef.h>
@@ -110,7 +110,7 @@ typedef struct {
 
 #ifdef __cplusplus
 extern "C" {
-#endif	
+#endif
 
 #ifdef USE_SSL
 void rocksock_init_ssl(void);

@@ -1,10 +1,10 @@
 /*
- * 
+ *
  * author: rofl0r
- * 
+ *
  * License: LGPL 2.1+ with static linking exception
- * 
- * 
+ *
+ *
  */
 
 /*
@@ -40,7 +40,7 @@
 #endif
 
 #ifdef USE_SSL
-	
+
 void rocksock_init_ssl(void) {
 	SSL_library_init();
 	SSL_load_error_strings();
@@ -73,7 +73,7 @@ int rocksock_seterror(rocksock* sock, rs_errorType errortype, int error, const c
 		case RS_ET_OWN:
 			if (error < RS_E_MAX_ERROR)
 				sock->lasterror.errormsg = (char*) rs_errorMap[error];
-			else 
+			else
 				sock->lasterror.errormsg = NULL;
 			break;
 		case RS_ET_SYS:
@@ -83,7 +83,7 @@ int rocksock_seterror(rocksock* sock, rs_errorType errortype, int error, const c
 		case RS_ET_SSL:
 			sock->lasterror.errormsg = (char*) ERR_reason_error_string(SSL_get_error(sock->ssl, error));
 			break;
-#endif			
+#endif
 		default:
 			sock->lasterror.errormsg = NULL;
 			break;
@@ -92,7 +92,7 @@ int rocksock_seterror(rocksock* sock, rs_errorType errortype, int error, const c
 }
 //#define NO_DNS_SUPPORT
 int rocksock_resolve_host(rocksock* sock, rs_hostInfo* hostinfo) {
-#ifndef NO_DNS_SUPPORT	
+#ifndef NO_DNS_SUPPORT
 	struct addrinfo hints;
 	int ret;
 #endif
@@ -137,47 +137,47 @@ int rocksock_init(rocksock* sock) {
 	sock->timeout = 60*1000;
 #ifdef USE_SSL
 	sock->ssl = NULL;
-#endif	
+#endif
 	return rocksock_seterror(sock, RS_ET_NO_ERROR, 0, NULL, 0);
 }
 
 struct timeval* make_timeval(struct timeval* tv, unsigned long timeout) {
 	if(!tv) return NULL;
-	tv->tv_sec = timeout / 1000; 
-	tv->tv_usec = 1000 * (timeout % 1000); 	
+	tv->tv_sec = timeout / 1000;
+	tv->tv_usec = 1000 * (timeout % 1000);
 	return tv;
 }
 
 int do_connect(rocksock* sock, rs_hostInfo* hostinfo, unsigned long timeout) {
 	int flags, ret;
-	fd_set wset; 
-	struct timeval tv; 
-	int optval; 
-	socklen_t optlen = sizeof(optval); 
+	fd_set wset;
+	struct timeval tv;
+	int optval;
+	socklen_t optlen = sizeof(optval);
 
 	sock->socket = socket(AF_INET, SOCK_STREAM, 0);
 	if(sock->socket == -1) return rocksock_seterror(sock, RS_ET_SYS, errno, ROCKSOCK_FILENAME, __LINE__);
-	
-	flags = fcntl(sock->socket, F_GETFL); 
+
+	flags = fcntl(sock->socket, F_GETFL);
 	if(flags == -1) return rocksock_seterror(sock, RS_ET_SYS, errno, ROCKSOCK_FILENAME, __LINE__);
-	
+
 	if(fcntl(sock->socket, F_SETFL, flags | O_NONBLOCK) == -1) return errno;
-	
+
 	ret = connect(sock->socket, hostinfo->hostaddr->ai_addr, hostinfo->hostaddr->ai_addrlen);
 	if(ret == -1) {
 		ret = errno;
 		if (!(ret == EINPROGRESS || ret == EWOULDBLOCK)) return rocksock_seterror(sock, RS_ET_SYS, ret, ROCKSOCK_FILENAME, __LINE__);
 	}
-	
+
 	if(fcntl(sock->socket, F_SETFL, flags) == -1) return rocksock_seterror(sock, RS_ET_SYS, errno, ROCKSOCK_FILENAME, __LINE__);
 
-	FD_ZERO(&wset); 
-	FD_SET(sock->socket, &wset); 
+	FD_ZERO(&wset);
+	FD_SET(sock->socket, &wset);
 
 	ret = select(sock->socket+1, NULL, &wset, NULL, timeout ? make_timeval(&tv, timeout) : NULL); 
 
-	if(ret == 1 && FD_ISSET(sock->socket, &wset)) { 
-		ret = getsockopt(sock->socket, SOL_SOCKET, SO_ERROR, &optval,&optlen); 
+	if(ret == 1 && FD_ISSET(sock->socket, &wset)) {
+		ret = getsockopt(sock->socket, SOL_SOCKET, SO_ERROR, &optval,&optlen);
 		if(ret == -1) return rocksock_seterror(sock, RS_ET_SYS, errno, ROCKSOCK_FILENAME, __LINE__);
 		else if(optval) return rocksock_seterror(sock, RS_ET_SYS, optval, ROCKSOCK_FILENAME, __LINE__);
 		return 0;
@@ -192,7 +192,7 @@ int rocksock_setup_socks4_header(rocksock* sock, int is4a, char* buffer, size_t 
 	buffer[1] = 1;
 	buffer[2] = proxy->hostinfo.port / 256;
 	buffer[3] = proxy->hostinfo.port % 256;
-	
+
 	if(is4a) {
 		buffer[4] = 0;
 		buffer[5] = 0;
@@ -211,7 +211,7 @@ int rocksock_setup_socks4_header(rocksock* sock, int is4a, char* buffer, size_t 
 	buffer[8] = 0;
 	*bytesused = 9;
 	if(is4a) *bytesused += strlen(strncpy(buffer + *bytesused, proxy->hostinfo.host, bufsize - *bytesused))+1;
-		
+
 	return rocksock_seterror(sock, RS_ET_NO_ERROR, 0, NULL, 0);
 }
 
@@ -225,33 +225,33 @@ int rocksock_connect(rocksock* sock, char* host, unsigned short port, int useSSL
 	char* p;
 	size_t socksused = 0, bytes;
 	if (!sock) return RS_E_NULL;
-	if (!host || !port) 
+	if (!host || !port)
 		return rocksock_seterror(sock, RS_ET_OWN, RS_E_NULL, ROCKSOCK_FILENAME, __LINE__);
 #ifndef USE_SSL
 	if (useSSL) return rocksock_seterror(sock, RS_ET_OWN, RS_E_NO_SSL, ROCKSOCK_FILENAME, __LINE__);
-#endif	
+#endif
 #ifdef NO_STRDUP
 	sock->hostinfo.host = host;
 #else
 	sock->hostinfo.host = strdup(host);
 #endif
 	sock->hostinfo.port = port;
-	
-	if(sock->lastproxy >= 0) 
+
+	if(sock->lastproxy >= 0)
 		connector = &sock->proxies[0].hostinfo;
 	else
 		connector = &sock->hostinfo;
-		
+
 	ret = rocksock_resolve_host(sock, connector);
 	if(ret) {
 		check_proxy0_failure:
 		if(sock->lastproxy >= 0) sock->lasterror.failedProxy = 0;
 		return ret;
 	}
-	
+
 	ret = do_connect(sock, connector, sock->timeout);
 	if(ret) goto check_proxy0_failure;
-		
+
 	if(sock->lastproxy >= 0) {
 		dummy.hostinfo = sock->hostinfo;
 		dummy.password = NULL;
@@ -260,7 +260,7 @@ int rocksock_connect(rocksock* sock, char* host, unsigned short port, int useSSL
 		for(i=1;i<=sock->lastproxy+1;i++) {
 			if(i > sock->lastproxy)
 				targetproxy = &dummy;
-			else 
+			else
 				targetproxy = &sock->proxies[i];
 			// send socks connection data
 			switch(sock->proxies[i-1].proxytype) {
@@ -272,7 +272,7 @@ int rocksock_connect(rocksock* sock, char* host, unsigned short port, int useSSL
 						proxyfailure:
 						sock->lasterror.failedProxy = i - 1;
 						return ret;
-					}	
+					}
 					ret = rocksock_send(sock, socksdata, socksused, 0, &bytes);
 					if(ret) goto proxyfailure;
 					ret = rocksock_recv(sock, socksdata, 8, 8, &bytes);
@@ -374,7 +374,7 @@ int rocksock_connect(rocksock* sock, char* host, unsigned short port, int useSSL
 							return rocksock_seterror(sock, RS_ET_OWN, RS_E_SOCKS5_AUTH_EXCEEDSIZE, ROCKSOCK_FILENAME, __LINE__);
 						*p++ = (char) bytes;
 						memcpy(p, targetproxy->hostinfo.host, bytes);
-					}	
+					}
 					p+=bytes;
 					*p++ = targetproxy->hostinfo.port / 256;
 					*p++ = targetproxy->hostinfo.port % 256;
@@ -484,20 +484,20 @@ int rocksock_operation(rocksock* sock, rs_operationType operation, char* buffer,
 	unsigned long sslerr, sslretryerr;
 	sslretryerr = operation == RS_OT_SEND ? SSL_ERROR_WANT_WRITE : SSL_ERROR_WANT_READ;
 #endif
-	
+
 	if (!sock->socket) return rocksock_seterror(sock, RS_ET_OWN, RS_E_NO_SOCKET, ROCKSOCK_FILENAME, __LINE__);
 	if(operation == RS_OT_SEND) wfd = &fd;
 	else rfd = &fd;
-	
+
 	if(sock->timeout) {
 		if(operation == RS_OT_SEND)
 			ret = setsockopt(sock->socket, SOL_SOCKET, SO_SNDTIMEO, (void*) make_timeval(&tv, sock->timeout), sizeof(tv));
-		else 
+		else
 			ret = setsockopt(sock->socket, SOL_SOCKET, SO_RCVTIMEO, (void*) make_timeval(&tv, sock->timeout), sizeof(tv));
 	}
-	
+
 	if (ret == -1) return rocksock_seterror(sock, RS_ET_SYS, errno, ROCKSOCK_FILENAME, __LINE__);
-	
+
 	while(bytesleft) {
 		FD_SET(sock->socket, &fd);
 		ret=select(sock->socket+1, rfd, wfd, NULL, sock->timeout ? make_timeval(&tv, sock->timeout) : NULL);
@@ -505,29 +505,29 @@ int rocksock_operation(rocksock* sock, rs_operationType operation, char* buffer,
 		if(ret == -1) {
 			//printf("h: %s, skt: %d, to: %d:%d\n", sock->hostinfo.host, sock->socket, tv.tv_sec, tv.tv_usec);
 			return rocksock_seterror(sock, RS_ET_SYS, errno, ROCKSOCK_FILENAME, __LINE__);
-		}	
+		}
 		else if(!ret) return rocksock_seterror(sock, RS_ET_OWN, RS_OT_READ ? RS_E_HIT_READTIMEOUT : RS_E_HIT_WRITETIMEOUT, ROCKSOCK_FILENAME, __LINE__);
 		byteswanted = (chunksize && chunksize < bytesleft) ? chunksize : bytesleft;
-#ifdef USE_SSL		
+#ifdef USE_SSL
 		if (sock->ssl) {
 			ssl_try_again:
 			if(operation == RS_OT_SEND)
 				ret = SSL_write(sock->ssl, bufptr, byteswanted);
-			else 
+			else
 				ret = SSL_read(sock->ssl, bufptr, byteswanted);
 			if(ret <= 0) {
 				sslerr = SSL_get_error(sock->ssl, ret);
 				if(sslerr == sslretryerr) goto ssl_try_again;
 			}
 			goto ssl_done;
-			
+
 		} else
-#endif		
-		if(operation == RS_OT_SEND) 
+#endif
+		if(operation == RS_OT_SEND)
 			ret = send(sock->socket, bufptr, byteswanted, MSG_NOSIGNAL);
 		else
 			ret = recv(sock->socket, bufptr, byteswanted, 0);
-		
+
 		if(!ret) // The return value will be 0 when the peer has performed an orderly shutdown.
 			//return rocksock_seterror(sock, RS_ET_SYS, errno, ROCKSOCK_FILENAME, __LINE__);
 			break;
@@ -535,10 +535,10 @@ int rocksock_operation(rocksock* sock, rs_operationType operation, char* buffer,
 			ret = errno;
 			if(ret == EWOULDBLOCK || ret == EINPROGRESS) return rocksock_seterror(sock, RS_ET_OWN, RS_OT_READ ? RS_E_HIT_READTIMEOUT : RS_E_HIT_WRITETIMEOUT, ROCKSOCK_FILENAME, __LINE__);
 			return rocksock_seterror(sock, RS_ET_SYS, errno, ROCKSOCK_FILENAME, __LINE__);
-		}	
+		}
 #ifdef USE_SSL
 		ssl_done:
-#endif		
+#endif
 		bytesleft -= ret;
 		bufptr += ret;
 		*bytes += ret;
@@ -563,12 +563,12 @@ int rocksock_peek(rocksock* sock) {
 #ifdef USE_SSL
 	if(sock->ssl)
 		readv = SSL_peek(sock->ssl, buf, 1);
-	else 
+	else
 #endif
 
 {
 	fd_set readfds;
-	
+
 	struct timeval tv;
 	tv.tv_sec = 0;
 	tv.tv_usec = 1;
@@ -587,7 +587,7 @@ int rocksock_peek(rocksock* sock) {
 #endif
 		perror("peek");
 	}
-*/	
+*/
 	return readv < 0 ? -1 : !!readv;
 }
 
@@ -615,7 +615,7 @@ int rocksock_readline(rocksock* sock, char* buffer, size_t bufsize, size_t* byte
 			if(*bytesread < bufsize) {
 				buffer[*bytesread] = '\0';
 				return 0;
-			} else 
+			} else
 				break;
 		}
 		ptr++;
@@ -671,7 +671,7 @@ int rocksock_clear(rocksock* sock) {
 		freeaddrinfo(sock->hostinfo.hostaddr);
 #endif
 	sock->hostinfo.hostaddr = NULL;
-		
+
 	return rocksock_seterror(sock, RS_ET_NO_ERROR, 0, NULL, 0);
 }
 
