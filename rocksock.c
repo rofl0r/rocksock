@@ -11,9 +11,7 @@
  * recognized defines: USE_SSL, ROCKSOCK_FILENAME, NO_DNS_SUPPORT, NO_STRDUP
  */
 
-#ifdef _POSIX_C_SOURCE
 #undef _POSIX_C_SOURCE
-#endif
 #define _POSIX_C_SOURCE 200809L
 #undef _GNU_SOURCE
 #define _GNU_SOURCE
