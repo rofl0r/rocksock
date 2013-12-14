@@ -1,10 +1,10 @@
 /*
- * 
+ *
  * author: rofl0r
- * 
+ *
  * License: LGPL 2.1+ with static linking exception
- * 
- * 
+ *
+ *
  */
 
 #include <string.h>
@@ -45,7 +45,7 @@ int rocksockserver_resolve_host(rs_hostInfo* hostinfo) {
 #ifndef IPV4_ONLY
 	char pbuf[8];
 	char* ports;
-	int ret;	
+	int ret;
 	struct addrinfo hints;
 
 	memset(&hints, 0, sizeof(hints));
@@ -53,7 +53,7 @@ int rocksockserver_resolve_host(rs_hostInfo* hostinfo) {
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_PASSIVE;
 	if(!(ports = intToString(hostinfo->port, pbuf))) return -1;
-	
+
 	ret = getaddrinfo(hostinfo->host, ports, &hints, &hostinfo->hostaddr);
 	if(!ret) {
 		return 0;
@@ -88,10 +88,10 @@ int rocksockserver_init(rocksockserver* srv, char* listenip, unsigned short port
 	struct addrinfo* p;
 	for(p = conn.hostaddr; p != NULL; p = p->ai_next) {
 		srv->listensocket = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
-		if (srv->listensocket < 0) { 
+		if (srv->listensocket < 0) {
 			continue;
 		}
-		
+
 		// lose the pesky "address already in use" error message
 		setsockopt(srv->listensocket, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
 
@@ -126,7 +126,7 @@ int rocksockserver_init(rocksockserver* srv, char* listenip, unsigned short port
 		# endif
 		return -1;
 	}
-	
+
 #endif
 	// listen
 	if (listen(srv->listensocket, 10) == -1) {
@@ -156,13 +156,13 @@ int rocksockserver_disconnect_client(rocksockserver* srv, int client) {
 
 void rocksockserver_watch_fd(rocksockserver* srv, int newfd) {
 	FD_SET(newfd, &srv->master);
-	if (newfd > srv->maxfd) 
+	if (newfd > srv->maxfd)
 		srv->maxfd = newfd;
 }
 
 int rocksockserver_loop(rocksockserver* srv,
 			char* buf, size_t bufsize,
-			int (*on_clientconnect) (void* userdata, struct sockaddr_storage* clientaddr, int fd), 
+			int (*on_clientconnect) (void* userdata, struct sockaddr_storage* clientaddr, int fd),
 			int (*on_clientread) (void* userdata, int fd, size_t nread),
 			int (*on_clientwantsdata) (void* userdata, int fd),
 			int (*on_clientdisconnect) (void* userdata, int fd)
@@ -181,11 +181,11 @@ int rocksockserver_loop(rocksockserver* srv,
 	fd_set* setptr;
 
 	for(;;) {
-		
+
 		read_fds = srv->master;
 		write_fds = srv->master;
-		
-		if ((srv->numfds = select(srv->maxfd+1, &read_fds, &write_fds, NULL, NULL)) && srv->numfds == -1) 
+
+		if ((srv->numfds = select(srv->maxfd+1, &read_fds, &write_fds, NULL, NULL)) && srv->numfds == -1)
 #ifndef NO_LOG
 			log_perror("select");
 #else
@@ -193,7 +193,7 @@ int rocksockserver_loop(rocksockserver* srv,
 #endif
 
 		if(!srv->numfds) continue;
-		
+
 		// optimization for the case searched_fd = lastfd, when we only have to handle one connection.
 		// i guess that should be the majority of cases.
 		k = lastfd;
@@ -201,7 +201,7 @@ int rocksockserver_loop(rocksockserver* srv,
 		if(FD_ISSET(k, setptr)) goto gotcha;
 		setptr = &read_fds;
 		if(FD_ISSET(k, setptr)) goto gotcha;
-		
+
 		nextfd:
 		setptr = &write_fds;
 		loopstart:
@@ -212,7 +212,7 @@ int rocksockserver_loop(rocksockserver* srv,
 				for(j = 0; j <= sizeof(size_t); j++) {
 					if(fdptr[i + j]) {
 						for(k = (i + j) * CHAR_BIT; k <= srv->maxfd; k++) {
-#else							
+#else
 						for(k = 0; k <= srv->maxfd; k++) {
 #endif
 							if(FD_ISSET(k, setptr)) {
@@ -221,7 +221,7 @@ int rocksockserver_loop(rocksockserver* srv,
 								FD_CLR(k, setptr);
 								if(setptr == &write_fds)
 									goto handlewrite;
-								else 
+								else
 									goto handleread;
 							}
 						}
@@ -230,7 +230,7 @@ int rocksockserver_loop(rocksockserver* srv,
 				}
 			}
 		}
-		
+
 #endif
 
 		if(setptr == &write_fds) {
@@ -252,7 +252,7 @@ int rocksockserver_loop(rocksockserver* srv,
 			exit(111);
 #endif
 		}
-		
+
 		handleread:
 		//printf("read_fd %d\n", k);
 		if (k == srv->listensocket) {
@@ -265,14 +265,14 @@ int rocksockserver_loop(rocksockserver* srv,
 				log_perror("accept");
 #endif
 			} else {
-				if(newfd >= USER_MAX_FD) 
+				if(newfd >= USER_MAX_FD)
 					close(newfd); // only USER_MAX_FD connections can be handled.
 				else {
 					FD_SET(newfd, &srv->master);
-					if (newfd > srv->maxfd) 
+					if (newfd > srv->maxfd)
 						srv->maxfd = newfd;
 					if(on_clientconnect) on_clientconnect(srv->userdata, &remoteaddr, newfd);
-				}	
+				}
 			}
 		} else {
 			if(buf && k != srv->signalfd) {
@@ -294,9 +294,9 @@ int rocksockserver_loop(rocksockserver* srv,
 			}
 		}
 		goto zzz;
-		
+
 		handlewrite:
-		
+
 		//printf("write_fd %d\n", k);
 		if(on_clientwantsdata) on_clientwantsdata(srv->userdata, k);
 
