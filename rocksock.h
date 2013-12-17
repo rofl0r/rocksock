@@ -112,8 +112,9 @@ int rocksock_readline(rocksock* sock, char* buffer, size_t bufsize, size_t* byte
 int rocksock_disconnect(rocksock* sock);
 /* clears/free's/resets all internally used buffers. etc but doesn't free the rocksock itself, since it could be stack-alloced */
 int rocksock_clear(rocksock* sock);
-/* check if data is available for read. returns 1 if available, 0 if not available, -1 in case of error */
-int rocksock_peek(rocksock* sock);
+/* check if data is available for read. result will contain 1 if available, 0 if not available.
+   return value 0 indicates success, everything else error. result may not be NULL */
+int rocksock_peek(rocksock* sock, int *result);
 
 #ifdef ROCKSOCK_DYNAMIC
 /* returns a new heap alloced rocksock object which must be passed to rocksock_init later on */
@@ -133,4 +134,5 @@ void rocksock_free(rocksock* s);
 //RcB: DEP "rocksock_variables.c"
 //RcB: DEP "rocksock_dynamic.c"
 //RcB: DEP "rocksock_readline.c"
+//RcB: DEP "rocksock_peek.c"
 

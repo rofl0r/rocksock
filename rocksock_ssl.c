@@ -80,3 +80,13 @@ void rocksock_ssl_free_context(rocksock *sock) {
                 sock->ssl = 0;
         }
 }
+
+int rocksock_ssl_peek(rocksock* sock, int *result) {
+        int ret;
+        char buf[4];
+	ret = SSL_peek(sock->ssl, buf, 1);
+	if(ret >= 0) *result = 1;
+	else return rocksock_seterror(sock, RS_ET_SSL, ret, ROCKSOCK_FILENAME, __LINE__);
+	return rocksock_seterror(sock, RS_ET_NO_ERROR, 0, NULL, 0);
+}
+

@@ -11,21 +11,35 @@
 #include <stdio.h>
 #include <sys/select.h>
 #include <netinet/in.h>
+#include <errno.h>
 
 #include "rocksock.h"
 #include "rocksock_internal.h"
-
-//TODO proper error handling
-int rocksock_peek(rocksock* sock) {
-	ssize_t readv;
 #ifdef USE_SSL
-	char buf[4];
-	if(sock->ssl)
-		readv = SSL_peek(sock->ssl, buf, 1);
-	else
+#include "rocksock_ssl_internal.h"
 #endif
 
-{
+#ifndef ROCKSOCK_FILENAME
+#define ROCKSOCK_FILENAME __FILE__
+#endif
+
+/*
+   return value: error code or 0 for no error
+   result will contain 0 if no data is available, 1 if data is available.
+   if data is available, and a subsequent recv call returns 0 bytes read, the
+   connection was terminated. */
+int rocksock_peek(rocksock* sock, int *result) {
+	ssize_t readv;
+	if(!result)
+		return rocksock_seterror(sock, RS_ET_OWN, RS_E_NULL, ROCKSOCK_FILENAME, __LINE__);
+	if(sock->ssl) {
+#ifdef USE_SSL
+		return rocksock_ssl_peek(sock, result);
+#else
+		return rocksock_seterror(sock, RS_ET_OWN, RS_E_NO_SSL, ROCKSOCK_FILENAME, __LINE__);
+#endif
+	}
+
 	fd_set readfds;
 
 	struct timeval tv;
@@ -33,19 +47,9 @@ int rocksock_peek(rocksock* sock) {
 	tv.tv_usec = 1;
 	FD_ZERO(&readfds);
 	FD_SET(sock->socket, &readfds);
-	readv = select(sock->socket + 1, &readfds, NULL, NULL, &tv);
-	return FD_ISSET(sock->socket, &readfds);
-}
 
-/*	readv = recvfrom(sock->socket, buf, 1, MSG_PEEK | MSG_DONTWAIT | MSG_TRUNC, NULL, NULL);
-	if(readv == -1 && errno != EAGAIN) {// && errno != EWOULDBLOCK) {
-#ifdef USE_SSL
-		if(sock->ssl)
-			ERR_print_errors_fp(stderr);
-		else
-#endif
-		perror("peek");
-	}
-*/
-	return readv < 0 ? -1 : !!readv;
+	readv = select(sock->socket + 1, &readfds, 0, 0, &tv);
+	if(readv < 0) return rocksock_seterror(sock, RS_ET_SYS, errno, ROCKSOCK_FILENAME, __LINE__);
+	*result = FD_ISSET(sock->socket, &readfds);
+	return rocksock_seterror(sock, RS_ET_NO_ERROR, 0, NULL, 0);
 }
