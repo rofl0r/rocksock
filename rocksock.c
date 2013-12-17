@@ -193,7 +193,7 @@ static int rocksock_setup_socks4_header(rocksock* sock, int is4a, char* buffer, 
 }
 
 int rocksock_connect(rocksock* sock, char* host, unsigned short port, int useSSL) {
-	ptrdiff_t i;
+	ptrdiff_t px;
 	int ret, trysocksv4a;
 	rs_hostInfo* connector;
 	rs_proxy dummy;
@@ -234,20 +234,20 @@ int rocksock_connect(rocksock* sock, char* host, unsigned short port, int useSSL
 		dummy.password = NULL;
 		dummy.username = NULL;
 		dummy.proxytype = RS_PT_NONE;
-		for(i=1;i<=sock->lastproxy+1;i++) {
-			if(i > sock->lastproxy)
+		for(px = 0; px <= sock->lastproxy; px++) {
+			if(px == sock->lastproxy)
 				targetproxy = &dummy;
 			else
-				targetproxy = &sock->proxies[i];
+				targetproxy = &sock->proxies[px + 1];
 			// send socks connection data
-			switch(sock->proxies[i-1].proxytype) {
+			switch(sock->proxies[px].proxytype) {
 				case RS_PT_SOCKS4:
 					trysocksv4a = 1;
 					trysocks4:
 					ret = rocksock_setup_socks4_header(sock, trysocksv4a, socksdata, sizeof(socksdata), targetproxy, &socksused);
 					if(ret) {
 						proxyfailure:
-						sock->lasterror.failedProxy = i - 1;
+						sock->lasterror.failedProxy = px;
 						return ret;
 					}
 					ret = rocksock_send(sock, socksdata, socksused, 0, &bytes);
@@ -279,7 +279,7 @@ int rocksock_connect(rocksock* sock, char* host, unsigned short port, int useSSL
 				case RS_PT_SOCKS5:
 					p = socksdata;
 					*p++ = 5;
-					if(sock->proxies[i-1].username && sock->proxies[i-1].password) {
+					if(sock->proxies[px].username && sock->proxies[px].password) {
 						*p++ = 2;
 						*p++ = 0;
 						*p++ = 2;
@@ -300,8 +300,8 @@ int rocksock_connect(rocksock* sock, char* host, unsigned short port, int useSSL
 						ret = rocksock_seterror(sock, RS_ET_OWN, RS_E_PROXY_AUTH_FAILED, ROCKSOCK_FILENAME, __LINE__);
 						goto proxyfailure;
 					} else if (socksdata[1] == 2) {
-						if( sock->proxies[i-1].username &&  sock->proxies[i-1].password &&
-						   *sock->proxies[i-1].username && *sock->proxies[i-1].password) {
+						if( sock->proxies[px].username &&  sock->proxies[px].password &&
+						   *sock->proxies[px].username && *sock->proxies[px].password) {
 							/*
 							+----+------+----------+------+----------+
 							|VER | ULEN |  UNAME   | PLEN |  PASSWD  |
@@ -311,13 +311,13 @@ int rocksock_connect(rocksock* sock, char* host, unsigned short port, int useSSL
 							*/
 							p = socksdata;
 							*p++ = 1;
-							bytes = strlen(sock->proxies[i-1].username) & 0xFF;
+							bytes = strlen(sock->proxies[px].username) & 0xFF;
 							*p++ = bytes;
-							memcpy(p, sock->proxies[i-1].username, bytes);
+							memcpy(p, sock->proxies[px].username, bytes);
 							p += bytes;
-							bytes = strlen(sock->proxies[i-1].password) & 0xFF;
+							bytes = strlen(sock->proxies[px].password) & 0xFF;
 							*p++ = bytes;
-							memcpy(p, sock->proxies[i-1].password, bytes);
+							memcpy(p, sock->proxies[px].password, bytes);
 							p += bytes;
 							bytes = p - socksdata;
 							ret = rocksock_send(sock, socksdata, bytes, bytes, &bytes);
