@@ -71,34 +71,41 @@ int rocksock_seterror(rocksock* sock, rs_errorType errortype, int error, const c
 	return error;
 }
 //#define NO_DNS_SUPPORT
-static int rocksock_resolve_host(rocksock* sock, rs_hostInfo* hostinfo) {
-#ifndef NO_DNS_SUPPORT
-	struct addrinfo hints;
-	int ret;
-#endif
+static int rocksock_resolve_host(rocksock* sock, rs_hostInfo* hostinfo, rs_resolveStorage* result) {
 	if (!sock) return RS_E_NULL;
 	if (!hostinfo || !hostinfo->host || !hostinfo->port) return rocksock_seterror(sock, RS_ET_OWN, RS_E_NULL, ROCKSOCK_FILENAME, __LINE__);;
+
+	result->hostaddr = &(result->hostaddr_buf);
+
 #ifndef NO_DNS_SUPPORT
-	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = AF_UNSPEC;
-	hints.ai_socktype = SOCK_STREAM;
-	ret = getaddrinfo(hostinfo->host, NULL, &hints, &hostinfo->hostaddr);
+	struct addrinfo hints = {.ai_family = AF_UNSPEC, .ai_socktype = SOCK_STREAM, .ai_flags = AI_ADDRCONFIG};
+	int ret;
+	struct addrinfo *best, *save;
+	ret = getaddrinfo(hostinfo->host, NULL, &hints, &save);
 	if(!ret) {
-		if(hostinfo->hostaddr->ai_addr->sa_family == AF_INET)
-			((struct sockaddr_in*) hostinfo->hostaddr->ai_addr)->sin_port = htons(hostinfo->port);
+		best = save;
+		while(best->ai_addr->sa_family == AF_INET6 && best->ai_next) best = best->ai_next;
+		*result->hostaddr = *best;
+		result->hostaddr->ai_addr = (struct sockaddr*) &(result->hostaddr_aiaddr_buf);
+		result->hostaddr->ai_next = 0;
+		*result->hostaddr->ai_addr = *best->ai_addr;
+
+		if(result->hostaddr->ai_addr->sa_family == AF_INET)
+			((struct sockaddr_in*) result->hostaddr->ai_addr)->sin_port = htons(hostinfo->port);
 		else
-			((struct sockaddr_in6*) hostinfo->hostaddr->ai_addr)->sin6_port = htons(hostinfo->port);
+			((struct sockaddr_in6*) result->hostaddr->ai_addr)->sin6_port = htons(hostinfo->port);
+		freeaddrinfo(save);
 		return 0;
 	} else
 		return rocksock_seterror(sock, RS_ET_GAI, ret, ROCKSOCK_FILENAME, __LINE__);
 #else
-	hostinfo->hostaddr = &(hostinfo->hostaddr_buf);
-	hostinfo->hostaddr->ai_addr = (struct sockaddr*) &(hostinfo->hostaddr_aiaddr_buf);
-	((struct sockaddr_in*) hostinfo->hostaddr->ai_addr)->sin_port = htons(hostinfo->port);
-	((struct sockaddr_in*) hostinfo->hostaddr->ai_addr)->sin_family = AF_INET;
-	hostinfo->hostaddr->ai_addr->sa_family = AF_INET;
-	hostinfo->hostaddr->ai_addrlen = sizeof(struct sockaddr_in);
-	ipv4fromstring(hostinfo->host, (unsigned char*) &((struct sockaddr_in*) hostinfo->hostaddr->ai_addr)->sin_addr);
+	result->hostaddr->ai_addr = (struct sockaddr*) &(result->hostaddr_aiaddr_buf);
+
+	((struct sockaddr_in*) result->hostaddr->ai_addr)->sin_port = htons(hostinfo->port);
+	((struct sockaddr_in*) result->hostaddr->ai_addr)->sin_family = AF_INET;
+	result->hostaddr->ai_addr->sa_family = AF_INET;
+	result->hostaddr->ai_addrlen = sizeof(struct sockaddr_in);
+	ipv4fromstring(hostinfo->host, (unsigned char*) &((struct sockaddr_in*) result->hostaddr->ai_addr)->sin_addr);
 
 	return 0;
 #endif
@@ -125,7 +132,7 @@ static struct timeval* make_timeval(struct timeval* tv, unsigned long timeout) {
 	return tv;
 }
 
-static int do_connect(rocksock* sock, rs_hostInfo* hostinfo, unsigned long timeout) {
+static int do_connect(rocksock* sock, rs_resolveStorage* hostinfo, unsigned long timeout) {
 	int flags, ret;
 	fd_set wset;
 	struct timeval tv;
@@ -176,14 +183,15 @@ static int rocksock_setup_socks4_header(rocksock* sock, int is4a, char* buffer, 
 		buffer[6] = 0;
 		buffer[7] = 1;
 	} else {
-		ret = rocksock_resolve_host(sock, &proxy->hostinfo);
+		rs_resolveStorage stor;
+		ret = rocksock_resolve_host(sock, &proxy->hostinfo, &stor);
 		if(ret) return ret;
-		if(proxy->hostinfo.hostaddr->ai_family != AF_INET)
+		if(stor.hostaddr->ai_family != AF_INET)
 			return rocksock_seterror(sock, RS_ET_OWN, RS_E_SOCKS4_NO_IP6, ROCKSOCK_FILENAME, __LINE__);
-		buffer[4] = ((char*) &(((struct sockaddr_in*) proxy->hostinfo.hostaddr->ai_addr)->sin_addr.s_addr))[0];
-		buffer[5] = ((char*) &(((struct sockaddr_in*) proxy->hostinfo.hostaddr->ai_addr)->sin_addr.s_addr))[1];
-		buffer[6] = ((char*) &(((struct sockaddr_in*) proxy->hostinfo.hostaddr->ai_addr)->sin_addr.s_addr))[2];
-		buffer[7] = ((char*) &(((struct sockaddr_in*) proxy->hostinfo.hostaddr->ai_addr)->sin_addr.s_addr))[3];
+		buffer[4] = ((char*) &(((struct sockaddr_in*) stor.hostaddr->ai_addr)->sin_addr.s_addr))[0];
+		buffer[5] = ((char*) &(((struct sockaddr_in*) stor.hostaddr->ai_addr)->sin_addr.s_addr))[1];
+		buffer[6] = ((char*) &(((struct sockaddr_in*) stor.hostaddr->ai_addr)->sin_addr.s_addr))[2];
+		buffer[7] = ((char*) &(((struct sockaddr_in*) stor.hostaddr->ai_addr)->sin_addr.s_addr))[3];
 	}
 	buffer[8] = 0;
 	*bytesused = 9;
@@ -219,14 +227,16 @@ int rocksock_connect(rocksock* sock, char* host, unsigned short port, int useSSL
 	else
 		connector = &sock->hostinfo;
 
-	ret = rocksock_resolve_host(sock, connector);
+	rs_resolveStorage stor;
+
+	ret = rocksock_resolve_host(sock, connector, &stor);
 	if(ret) {
 		check_proxy0_failure:
 		if(sock->lastproxy >= 0) sock->lasterror.failedProxy = 0;
 		return ret;
 	}
 
-	ret = do_connect(sock, connector, sock->timeout);
+	ret = do_connect(sock, &stor, sock->timeout);
 	if(ret) goto check_proxy0_failure;
 
 	if(sock->lastproxy >= 0) {
@@ -531,11 +541,6 @@ int rocksock_clear(rocksock* sock) {
 			sock->proxies[i].username = NULL;
 			sock->proxies[i].password = NULL;
 			sock->proxies[i].hostinfo.host = NULL;
-#ifndef NO_DNS_SUPPORT
-			if(sock->proxies[i].hostinfo.hostaddr)
-				freeaddrinfo(sock->proxies[i].hostinfo.hostaddr);
-#endif
-			sock->proxies[i].hostinfo.hostaddr = NULL;
 		}
 	}
 #ifndef NO_STRDUP
@@ -543,11 +548,6 @@ int rocksock_clear(rocksock* sock) {
 		free(sock->hostinfo.host);
 #endif
 	sock->hostinfo.host = NULL;
-#ifndef NO_DNS_SUPPORT
-	if(sock->hostinfo.hostaddr)
-		freeaddrinfo(sock->hostinfo.hostaddr);
-#endif
-	sock->hostinfo.hostaddr = NULL;
 
 	return rocksock_seterror(sock, RS_ET_NO_ERROR, 0, NULL, 0);
 }
