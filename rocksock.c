@@ -132,7 +132,7 @@ static int do_connect(rocksock* sock, rs_hostInfo* hostinfo, unsigned long timeo
 	int optval;
 	socklen_t optlen = sizeof(optval);
 
-	sock->socket = socket(AF_INET, SOCK_STREAM, 0);
+	sock->socket = socket(hostinfo->hostaddr->ai_family, SOCK_STREAM, 0);
 	if(sock->socket == -1) return rocksock_seterror(sock, RS_ET_SYS, errno, ROCKSOCK_FILENAME, __LINE__);
 
 	flags = fcntl(sock->socket, F_GETFL);
@@ -151,7 +151,7 @@ static int do_connect(rocksock* sock, rs_hostInfo* hostinfo, unsigned long timeo
 	FD_ZERO(&wset);
 	FD_SET(sock->socket, &wset);
 
-	ret = select(sock->socket+1, NULL, &wset, NULL, timeout ? make_timeval(&tv, timeout) : NULL); 
+	ret = select(sock->socket+1, NULL, &wset, NULL, timeout ? make_timeval(&tv, timeout) : NULL);
 
 	if(ret == 1 && FD_ISSET(sock->socket, &wset)) {
 		ret = getsockopt(sock->socket, SOL_SOCKET, SO_ERROR, &optval,&optlen);
