@@ -62,6 +62,7 @@ int rocksock_seterror(rocksock* sock, rs_errorType errortype, int error, const c
 #ifdef USE_SSL
 		case RS_ET_SSL:
 			sock->lasterror.errormsg = (char*) rocksock_ssl_strerror(sock, error);
+			if(!sock->lasterror.errormsg) sock->lasterror.errormsg = (char*) rs_errorMap[RS_E_SSL_GENERIC];
 			break;
 #endif
 		default:
