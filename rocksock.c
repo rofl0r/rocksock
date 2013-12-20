@@ -143,6 +143,7 @@ static int do_connect(rocksock* sock, rs_resolveStorage* hostinfo, unsigned long
 	sock->socket = socket(hostinfo->hostaddr->ai_family, SOCK_STREAM, 0);
 	if(sock->socket == -1) return rocksock_seterror(sock, RS_ET_SYS, errno, ROCKSOCK_FILENAME, __LINE__);
 
+	/* the socket has to be made non-blocking temporarily so we can enforce a connect timeout */
 	flags = fcntl(sock->socket, F_GETFL);
 	if(flags == -1) return rocksock_seterror(sock, RS_ET_SYS, errno, ROCKSOCK_FILENAME, __LINE__);
 
@@ -468,14 +469,6 @@ static int rocksock_operation(rocksock* sock, rs_operationType operation, char* 
 	if (ret == -1) return rocksock_seterror(sock, RS_ET_SYS, errno, ROCKSOCK_FILENAME, __LINE__);
 
 	while(bytesleft) {
-		FD_SET(sock->socket, &fd);
-		ret=select(sock->socket+1, rfd, wfd, NULL, sock->timeout ? make_timeval(&tv, sock->timeout) : NULL);
-		if(!FD_ISSET(sock->socket, &fd)) rocksock_seterror(sock, RS_ET_OWN, RS_E_NULL, ROCKSOCK_FILENAME, __LINE__); // temp test
-		if(ret == -1) {
-			//printf("h: %s, skt: %d, to: %d:%d\n", sock->hostinfo.host, sock->socket, tv.tv_sec, tv.tv_usec);
-			return rocksock_seterror(sock, RS_ET_SYS, errno, ROCKSOCK_FILENAME, __LINE__);
-		}
-		else if(!ret) return rocksock_seterror(sock, RS_ET_OWN, RS_OT_READ ? RS_E_HIT_READTIMEOUT : RS_E_HIT_WRITETIMEOUT, ROCKSOCK_FILENAME, __LINE__);
 		byteswanted = (chunksize && chunksize < bytesleft) ? chunksize : bytesleft;
 #ifdef USE_SSL
 		if (sock->ssl) {
@@ -484,12 +477,26 @@ static int rocksock_operation(rocksock* sock, rs_operationType operation, char* 
 			else
 				ret = rocksock_ssl_recv(sock, bufptr, byteswanted);
 
-		} else
+		} else {
 #endif
+		/* enforce the timeout by using select() before doing the actual recv/send */
+		FD_SET(sock->socket, &fd);
+		ret=select(sock->socket+1, rfd, wfd, NULL, sock->timeout ? make_timeval(&tv, sock->timeout) : NULL);
+		if(!FD_ISSET(sock->socket, &fd)) rocksock_seterror(sock, RS_ET_OWN, RS_E_NULL, ROCKSOCK_FILENAME, __LINE__); // temp test
+		if(ret == -1) {
+			//printf("h: %s, skt: %d, to: %d:%d\n", sock->hostinfo.host, sock->socket, tv.tv_sec, tv.tv_usec);
+			return rocksock_seterror(sock, RS_ET_SYS, errno, ROCKSOCK_FILENAME, __LINE__);
+		}
+		else if(!ret) return rocksock_seterror(sock, RS_ET_OWN, RS_OT_READ ? RS_E_HIT_READTIMEOUT : RS_E_HIT_WRITETIMEOUT, ROCKSOCK_FILENAME, __LINE__);
+
 		if(operation == RS_OT_SEND)
 			ret = send(sock->socket, bufptr, byteswanted, MSG_NOSIGNAL);
 		else
 			ret = recv(sock->socket, bufptr, byteswanted, 0);
+
+#ifdef USE_SSL
+		}
+#endif
 
 		if(!ret) // The return value will be 0 when the peer has performed an orderly shutdown.
 			//return rocksock_seterror(sock, RS_ET_SYS, errno, ROCKSOCK_FILENAME, __LINE__);
