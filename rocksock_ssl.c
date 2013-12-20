@@ -37,17 +37,16 @@ const char* rocksock_ssl_strerror(rocksock *sock, int error) {
 	return ERR_reason_error_string(SSL_get_error(sock->ssl, error));
 }
 
+#include <errno.h>
 int rocksock_ssl_send(rocksock* sock, char* buf, size_t sz) {
-	int ret;
-	do  ret = SSL_write(sock->ssl, buf, sz);
-	while (ret <= 0 && SSL_get_error(sock->ssl, ret) ==SSL_ERROR_WANT_WRITE);
-	return ret;
+        int ret = SSL_write(sock->ssl, buf, sz);
+        if (ret < 0 && SSL_get_error(sock->ssl, ret) == SSL_ERROR_WANT_WRITE) errno = EWOULDBLOCK;
+        return ret;
 }
 
 int rocksock_ssl_recv(rocksock* sock, char* buf, size_t sz) {
-	int ret;
-	do  ret = SSL_read(sock->ssl, buf, sz);
-	while (ret <= 0 && SSL_get_error(sock->ssl, ret) == SSL_ERROR_WANT_READ);
+	int ret = SSL_read(sock->ssl, buf, sz);
+	if (ret < 0 && SSL_get_error(sock->ssl, ret) == SSL_ERROR_WANT_READ) errno = EWOULDBLOCK;
 	return ret;
 }
 
@@ -65,7 +64,9 @@ int rocksock_ssl_connect_fd(rocksock* sock) {
 	SSL_set_fd(sock->ssl, sock->socket);
 	int ret = SSL_connect(sock->ssl);
 	if(ret != 1) {
-		ERR_print_errors_fp(stderr);
+		if((ret = SSL_get_error(sock->ssl, ret)) == SSL_ERROR_WANT_READ)
+			return rocksock_seterror(sock, RS_ET_OWN, RS_E_HIT_CONNECTTIMEOUT, ROCKSOCK_FILENAME, __LINE__);
+		//ERR_print_errors_fp(stderr);
 		//printf("%dxxx\n", SSL_get_error(sock->ssl, ret));
 		return rocksock_seterror(sock, RS_ET_SSL, ret, ROCKSOCK_FILENAME, __LINE__);
 	}
@@ -93,7 +94,8 @@ int rocksock_ssl_peek(rocksock* sock, int *result) {
 	if(ret >= 0) *result = 1;
 	else {
 		ret = SSL_get_error(sock->ssl, ret);
-		if(ret == SSL_ERROR_WANT_READ) goto again;
+		if(ret == SSL_ERROR_WANT_READ)
+			return rocksock_seterror(sock, RS_ET_OWN, RS_E_HIT_READTIMEOUT, ROCKSOCK_FILENAME, __LINE__); //goto again;
 		return rocksock_seterror(sock, RS_ET_SSL, ret, ROCKSOCK_FILENAME, __LINE__);
         }
 	return rocksock_seterror(sock, RS_ET_NO_ERROR, 0, NULL, 0);
