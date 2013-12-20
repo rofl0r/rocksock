@@ -29,7 +29,7 @@ int rocksock_readline(rocksock* sock, char* buffer, size_t bufsize, size_t* byte
 	*bytesread = 0;
 	while(*bytesread < bufsize) {
 		ret = rocksock_recv(sock, ptr, 1, 1, &bytesread2);
-		if(ret) return ret;
+		if(ret || !bytesread2) return ret;
 		*bytesread += bytesread2;
 		if(ptr > buffer + bufsize)
 			break;
