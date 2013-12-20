@@ -25,21 +25,19 @@ void rocksock_free_ssl(void) {
 }
 
 const char* rocksock_ssl_strerror(rocksock *sock, int error) {
-	int err = CyaSSL_get_error(sock->ssl, 0);
-	return CyaSSL_ERR_reason_error_string(err);
+	return CyaSSL_ERR_reason_error_string(error);
 }
 
+#include <errno.h>
 int rocksock_ssl_send(rocksock* sock, char* buf, size_t sz) {
-	int ret;
-	do  ret = CyaSSL_write(sock->ssl, buf, sz);
-	while (ret <= 0 && CyaSSL_get_error(sock->ssl, ret) == SSL_ERROR_WANT_WRITE);
-	return ret;
+        int ret = CyaSSL_write(sock->ssl, buf, sz);
+        if (ret < 0 && CyaSSL_get_error(sock->ssl, ret) == SSL_ERROR_WANT_WRITE) errno = EWOULDBLOCK;
+        return ret;
 }
 
 int rocksock_ssl_recv(rocksock* sock, char* buf, size_t sz) {
-	int ret;
-	do  ret = CyaSSL_read(sock->ssl, buf, sz);
-	while (ret <= 0 && CyaSSL_get_error(sock->ssl, ret) == SSL_ERROR_WANT_READ);
+	int ret = CyaSSL_read(sock->ssl, buf, sz);
+	if (ret < 0 && CyaSSL_get_error(sock->ssl, ret) == SSL_ERROR_WANT_READ) errno = EWOULDBLOCK;
 	return ret;
 }
 
@@ -64,6 +62,11 @@ int rocksock_ssl_connect_fd(rocksock* sock) {
 
 	int ret = CyaSSL_connect(sock->ssl);
 	if(ret != SSL_SUCCESS) {
+		/* when CyaSSL_connect gets interrupted by a timeout, it reports LENGTH_ERROR instead of
+		   SSL_ERROR_WANT_READ as it's supposed to do (see cyassl github issue #65).
+		   since that value is not exported we can't catch it without hardcoding the value, so we will wait for a fix */
+		if((ret = CyaSSL_get_error(sock->ssl, ret)) == SSL_ERROR_WANT_READ)
+			return rocksock_seterror(sock, RS_ET_OWN, RS_E_HIT_CONNECTTIMEOUT, ROCKSOCK_FILENAME, __LINE__);
 		return rocksock_seterror(sock, RS_ET_SSL, ret, ROCKSOCK_FILENAME, __LINE__);
 	}
 	return 0;
@@ -85,17 +88,11 @@ int rocksock_ssl_pending(rocksock *sock) {
 int rocksock_ssl_peek(rocksock* sock, int *result) {
         int ret;
         char buf[4];
-	again:
 	ret = CyaSSL_peek(sock->ssl, buf, 1);
 	if(ret >= 0) *result = 1;
-	/* when SSL_peek returns 0, it means a disconnect.
-	   there's no way to get "peek was successful, no error, but also no data"
-	   and that means that it must block until data is there or an error happened.
-	   we have to return 1 in that case as well so the subsequent read returns 0,
-	   which is the proper way to detect a disconnect. */
 	else {
 		ret = CyaSSL_get_error(sock->ssl, 0);
-		if(ret == SSL_ERROR_WANT_READ) goto again;
+		if(ret == SSL_ERROR_WANT_READ) return rocksock_seterror(sock, RS_ET_OWN, RS_E_HIT_READTIMEOUT, ROCKSOCK_FILENAME, __LINE__);
 		return rocksock_seterror(sock, RS_ET_SSL, ret, ROCKSOCK_FILENAME, __LINE__);
 	}
 	return rocksock_seterror(sock, RS_ET_NO_ERROR, 0, NULL, 0);
