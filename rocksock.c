@@ -15,7 +15,7 @@
 #include <string.h>
 #include <errno.h>
 #include <stdlib.h>
-//#include <stdio.h>
+#include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/select.h>
@@ -23,7 +23,53 @@
 
 #include "rocksock.h"
 #include "rocksock_internal.h"
-#include "../lib/include/strlib.h"
+#ifdef USE_LIBULZ
+//RcB: SKIPUON "USE_LIBULZ"
+#include <ulz/strlib.h>
+#include <ulz/stdio-repl.h>
+//RcB: SKIPUOFF "USE_LIBULZ"
+#else
+/* this version of ipv4fromstring was taken from libulz and tuned to be
+   more pedantic than the libulz version, so it can be used for isnumericipv4()
+   as well, as it strictly checks the input for correctness. */
+static int ipv4fromstring(const char* ipstring, unsigned char* fourbytesptr) {
+	const char* start = ipstring;
+	size_t outbyte = 0;
+	while(outbyte < 4) {
+		if(*ipstring == '.' || !*ipstring) {
+			fourbytesptr[outbyte] = 0;
+			size_t b = 0;
+			unsigned tmp;
+			switch(ipstring - start) {
+			case 3:
+				tmp = (start[b++]-'0')*100;
+				if(tmp > 200) return 0;
+				fourbytesptr[outbyte] += tmp;
+			case 2:
+				fourbytesptr[outbyte] += (start[b++]-'0')*10;
+			case 1:
+				fourbytesptr[outbyte] += (start[b++]-'0');
+				break;
+			default:
+				return 0;
+			}
+			start = ipstring + 1;
+			outbyte++;
+		} else {
+			if(*ipstring < '0' || *ipstring > '9') return 0;
+		}
+		if(!*ipstring && outbyte < 4) return 0;
+		ipstring++;
+	}
+	if(ipstring[-1]) return 0;
+	return 1;
+}
+
+static int isnumericipv4(const char* ipstring) {
+	unsigned char ip[4];
+	return ipv4fromstring(ipstring, ip);
+}
+#endif
 
 #ifndef ROCKSOCK_FILENAME
 #define ROCKSOCK_FILENAME __FILE__
@@ -409,7 +455,7 @@ int rocksock_connect(rocksock* sock, char* host, unsigned short port, int useSSL
 					}
 					break;
 				case RS_PT_HTTP:
-					bytes = ulz_snprintf(socksdata, sizeof(socksdata), "CONNECT %s:%d HTTP/1.1\r\n\r\n", targetproxy->hostinfo.host, targetproxy->hostinfo.port);
+					bytes = snprintf(socksdata, sizeof(socksdata), "CONNECT %s:%d HTTP/1.1\r\n\r\n", targetproxy->hostinfo.host, targetproxy->hostinfo.port);
 					ret = rocksock_send(sock, socksdata, bytes, bytes, &bytes);
 					if(ret) goto proxyfailure;
 					ret = rocksock_recv(sock, socksdata, sizeof(socksdata), sizeof(socksdata), &bytes);
