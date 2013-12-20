@@ -1,24 +1,27 @@
 rocksock socket library (C) rofl0r
 ==================================
 
-rocksock is a powerful blocking networking library written in C.
+rocksock is a powerful (mostly) blocking networking library
+written in C.
 it was designed for small size, robustness, simplicity,
 static linking and fine-grained error reporting and
 configurability.
 
 - easy to use
 - supports timeout
-- supports SSL (optional, currently using openssl backend)
+- supports SSL (optional, currently using openssl or cyassl backend)
 - supports chaining of socks4/4a/5 proxies a la proxychains.
   the maximum number of proxies can be configured at compiletime.
   using a single proxy works as well, of course.
-- no global state (except for openssl init routines)
+- no global state (except for ssl init routines)
 - error reporting mechanism, showing the exact type
 - supports DNS resolving (can be turned off for smaller size)
 - does not use malloc, and in the DNS-less profile, does not use
   any libc functions that could call it.
   (malloc typically adds at least 20KB to the binary size if
   statically linked).
+  of course once you build it with ssl support, ssl will definitely
+  make use of malloc().
 - uses [libulz](https://github.com/rofl0r/libulz), a lightweight 
   C library, featuring things like
   a snprintf replacement which doesnt include code for float
