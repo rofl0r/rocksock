@@ -34,7 +34,7 @@ void rocksock_free_ssl(void) {
 }
 
 const char* rocksock_ssl_strerror(rocksock *sock, int error) {
-	return ERR_reason_error_string(SSL_get_error(sock->ssl, error));
+	return ERR_reason_error_string(error);
 }
 
 #include <errno.h>
