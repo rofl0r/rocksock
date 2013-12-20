@@ -81,12 +81,21 @@ void rocksock_ssl_free_context(rocksock *sock) {
         }
 }
 
+int rocksock_ssl_pending(rocksock *sock) {
+	return SSL_pending(sock->ssl);
+}
+
 int rocksock_ssl_peek(rocksock* sock, int *result) {
-        int ret;
         char buf[4];
+	int ret;
+	again:
 	ret = SSL_peek(sock->ssl, buf, 1);
 	if(ret >= 0) *result = 1;
-	else return rocksock_seterror(sock, RS_ET_SSL, ret, ROCKSOCK_FILENAME, __LINE__);
+	else {
+		ret = SSL_get_error(sock->ssl, ret);
+		if(ret == SSL_ERROR_WANT_READ) goto again;
+		return rocksock_seterror(sock, RS_ET_SSL, ret, ROCKSOCK_FILENAME, __LINE__);
+        }
 	return rocksock_seterror(sock, RS_ET_NO_ERROR, 0, NULL, 0);
 }
 

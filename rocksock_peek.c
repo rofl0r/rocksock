@@ -32,14 +32,12 @@ int rocksock_peek(rocksock* sock, int *result) {
 	ssize_t readv;
 	if(!result)
 		return rocksock_seterror(sock, RS_ET_OWN, RS_E_NULL, ROCKSOCK_FILENAME, __LINE__);
-	if(sock->ssl) {
 #ifdef USE_SSL
-		return rocksock_ssl_peek(sock, result);
-#else
-		return rocksock_seterror(sock, RS_ET_OWN, RS_E_NO_SSL, ROCKSOCK_FILENAME, __LINE__);
-#endif
+	if(sock->ssl && rocksock_ssl_pending(sock)) {
+		*result = 1;
+		goto no_err;
 	}
-
+#endif
 	fd_set readfds;
 
 	struct timeval tv;
@@ -51,5 +49,11 @@ int rocksock_peek(rocksock* sock, int *result) {
 	readv = select(sock->socket + 1, &readfds, 0, 0, &tv);
 	if(readv < 0) return rocksock_seterror(sock, RS_ET_SYS, errno, ROCKSOCK_FILENAME, __LINE__);
 	*result = FD_ISSET(sock->socket, &readfds);
+#ifdef USE_SSL
+	if(sock->ssl && *result) {
+		return rocksock_ssl_peek(sock, result);
+	}
+	no_err:
+#endif
 	return rocksock_seterror(sock, RS_ET_NO_ERROR, 0, NULL, 0);
 }
