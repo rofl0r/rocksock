@@ -9,8 +9,6 @@ typedef struct {
 	struct sockaddr_storage hostaddr_aiaddr_buf;
 } rs_resolveStorage;
 
-extern const char* rs_errorMap[];
-
 int rocksock_seterror(rocksock* sock, rs_errorType errortype, int error, const char* file, int line);
 
 #endif
