@@ -3,6 +3,8 @@
  * License: LGPL 2.1+ with static linking exception
  */
 
+#ifdef USE_CYASSL
+
 #include "rocksock_ssl_internal.h"
 #include "rocksock_internal.h"
 
@@ -97,3 +99,6 @@ int rocksock_ssl_peek(rocksock* sock, int *result) {
 	}
 	return rocksock_seterror(sock, RS_ET_OWN, 0, NULL, 0);
 }
+
+#endif
+
