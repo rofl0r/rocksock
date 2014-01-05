@@ -93,7 +93,7 @@ typedef struct {
 extern "C" {
 #endif
 
-#ifdef USE_SSL
+#if 1 /* only available if USE_SSL was activated at build time */
 void rocksock_init_ssl(void);
 void rocksock_free_ssl(void);
 #endif
@@ -119,12 +119,11 @@ int rocksock_clear(rocksock* sock);
    return value 0 indicates success, everything else error. result may not be NULL */
 int rocksock_peek(rocksock* sock, int *result);
 
-#ifdef ROCKSOCK_DYNAMIC
+/* using these two pulls in malloc from libc - only matters if you static link and dont use SSL */
 /* returns a new heap alloced rocksock object which must be passed to rocksock_init later on */
 rocksock* rocksock_new(void);
 /* free *only* the rocksock object. typically you would call rocksock_clear first */
 void rocksock_free(rocksock* s);
-#endif
 
 #ifdef __cplusplus
 }
