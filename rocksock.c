@@ -550,8 +550,7 @@ static int rocksock_operation(rocksock* sock, rs_operationType operation, char* 
 #endif
 
 		if(!ret) // The return value will be 0 when the peer has performed an orderly shutdown.
-			//return rocksock_seterror(sock, RS_ET_SYS, errno, ROCKSOCK_FILENAME, __LINE__);
-			break;
+			return rocksock_seterror(sock, RS_ET_OWN, RS_E_REMOTE_DISCONNECTED, ROCKSOCK_FILENAME, __LINE__);
 		else if(ret == -1) {
 			ret = errno;
 			if(ret == EWOULDBLOCK || ret == EINPROGRESS) return rocksock_seterror(sock, RS_ET_OWN, RS_OT_READ ? RS_E_HIT_READTIMEOUT : RS_E_HIT_WRITETIMEOUT, ROCKSOCK_FILENAME, __LINE__);

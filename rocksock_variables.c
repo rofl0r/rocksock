@@ -3,6 +3,7 @@ const char* rs_errorMap[] = {
 	"0" , "1" , "2" , "3" , "4" , "5" , "6" , "7",
 	"8" , "9" , "10", "11", "12", "13", "14", "15",
 	"16", "17", "18", "19", "20", "21", "22", "23"
+	"24",
 };
 
 #else
@@ -57,6 +58,8 @@ const char* rs_errorMap[] = {
 	"proxy: command not supported",
 	//RS_E_PROXY_ADDRESSTYPE_NOT_SUPPORTED = 23,
 	"proxy: addresstype not supported",
+	//RS_E_REMOTE_DISCONNECTED = 24,
+	"remote socket closed connection",
 };
 
 #endif
