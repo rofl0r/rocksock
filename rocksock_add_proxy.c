@@ -37,6 +37,6 @@ int rocksock_add_proxy(rocksock* sock, rs_proxyType proxytype, char* host, unsig
 	prx->username = username;
 	prx->password = password;
 #endif
-	return rocksock_seterror(sock, RS_ET_NO_ERROR, 0, NULL, 0);
+	return rocksock_seterror(sock, RS_ET_OWN, 0, NULL, 0);
 }
 

@@ -21,8 +21,7 @@ typedef enum {
 } rs_proxyType;
 
 typedef enum {
-	RS_ET_NO_ERROR = 0,
-	RS_ET_OWN,
+	RS_ET_OWN = 0,
 	RS_ET_SYS,
 	RS_ET_GAI,
 	RS_ET_SSL,

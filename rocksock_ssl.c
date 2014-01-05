@@ -98,6 +98,6 @@ int rocksock_ssl_peek(rocksock* sock, int *result) {
 			return rocksock_seterror(sock, RS_ET_OWN, RS_E_HIT_READTIMEOUT, ROCKSOCK_FILENAME, __LINE__); //goto again;
 		return rocksock_seterror(sock, RS_ET_SSL, ret, ROCKSOCK_FILENAME, __LINE__);
         }
-	return rocksock_seterror(sock, RS_ET_NO_ERROR, 0, NULL, 0);
+	return rocksock_seterror(sock, RS_ET_OWN, 0, NULL, 0);
 }
 

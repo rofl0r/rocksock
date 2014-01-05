@@ -1,6 +1,5 @@
 #include "rocksock.h"
 static const char rs_errortype_map[][9] = {
-	[ RS_ET_NO_ERROR ] = "none",
 	[ RS_ET_OWN ]      = "rocksock",
 	[ RS_ET_SYS ]      = "system",
 	[ RS_ET_GAI ]      = "gai/dns",

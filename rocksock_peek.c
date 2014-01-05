@@ -55,5 +55,5 @@ int rocksock_peek(rocksock* sock, int *result) {
 	}
 	no_err:
 #endif
-	return rocksock_seterror(sock, RS_ET_NO_ERROR, 0, NULL, 0);
+	return rocksock_seterror(sock, RS_ET_OWN, 0, NULL, 0);
 }
