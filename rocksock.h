@@ -58,7 +58,6 @@ typedef enum {
 } rs_error;
 
 typedef struct {
-	char* errormsg;
 	rs_errorType errortype;
 	int error;
 	int line;
@@ -106,6 +105,8 @@ int rocksock_send(rocksock* sock, char* buffer, size_t bufsize, size_t chunksize
 int rocksock_recv(rocksock* sock, char* buffer, size_t bufsize, size_t chunksize, size_t* bytesread);
 int rocksock_readline(rocksock* sock, char* buffer, size_t bufsize, size_t* bytesread);
 int rocksock_disconnect(rocksock* sock);
+/* returns a string describing the last error or NULL */
+const char* rocksock_strerror(rocksock *sock);
 /* clears/free's/resets all internally used buffers. etc but doesn't free the rocksock itself, since it could be stack-alloced */
 int rocksock_clear(rocksock* sock);
 /* check if data is available for read. result will contain 1 if available, 0 if not available.

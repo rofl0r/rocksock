@@ -95,31 +95,6 @@ int rocksock_seterror(rocksock* sock, rs_errorType errortype, int error, const c
 	sock->lasterror.line = line;
 	sock->lasterror.file = file;
 	sock->lasterror.failedProxy = -1;
-	switch(errortype) {
-#ifndef NO_DNS_SUPPORT
-		case RS_ET_GAI:
-			sock->lasterror.errormsg = (char*) gai_strerror(error);
-			break;
-#endif
-		case RS_ET_OWN:
-			if (error < RS_E_MAX_ERROR)
-				sock->lasterror.errormsg = (char*) rs_errorMap[error];
-			else
-				sock->lasterror.errormsg = NULL;
-			break;
-		case RS_ET_SYS:
-			sock->lasterror.errormsg = strerror(error);
-			break;
-#ifdef USE_SSL
-		case RS_ET_SSL:
-			sock->lasterror.errormsg = (char*) rocksock_ssl_strerror(sock, error);
-			if(!sock->lasterror.errormsg) sock->lasterror.errormsg = (char*) rs_errorMap[RS_E_SSL_GENERIC];
-			break;
-#endif
-		default:
-			sock->lasterror.errormsg = NULL;
-			break;
-	}
 	return error;
 }
 //#define NO_DNS_SUPPORT
