@@ -21,6 +21,11 @@
 #include <sys/select.h>
 #include <netinet/in.h>
 
+#ifndef SOCK_CLOEXEC
+#warning compiling without SOCK_CLOEXEC support
+#define SOCK_CLOEXEC 0
+#endif
+
 #include "rocksock.h"
 #include "rocksock_internal.h"
 #ifdef USE_LIBULZ
@@ -186,7 +191,7 @@ static int do_connect(rocksock* sock, rs_resolveStorage* hostinfo, unsigned long
 	int optval;
 	socklen_t optlen = sizeof(optval);
 
-	sock->socket = socket(hostinfo->hostaddr->ai_family, SOCK_STREAM, 0);
+	sock->socket = socket(hostinfo->hostaddr->ai_family, SOCK_STREAM | SOCK_CLOEXEC, 0);
 	if(sock->socket == -1) return rocksock_seterror(sock, RS_ET_SYS, errno, ROCKSOCK_FILENAME, __LINE__);
 
 	/* the socket has to be made non-blocking temporarily so we can enforce a connect timeout */
