@@ -26,6 +26,7 @@ typedef enum {
 	RS_ET_SYS,
 	RS_ET_GAI,
 	RS_ET_SSL,
+	RS_ET_MAX
 } rs_errorType;
 
 typedef enum {
@@ -97,6 +98,8 @@ extern "C" {
 void rocksock_init_ssl(void);
 void rocksock_free_ssl(void);
 #endif
+
+/* all rocksock functions that return int return 0 on success or an errornumber on failure */
 int rocksock_init(rocksock* sock);
 int rocksock_set_timeout(rocksock* sock, unsigned long timeout_millisec);
 int rocksock_add_proxy(rocksock* sock, rs_proxyType proxytype, char* host, unsigned short port, char* username, char* password);
@@ -105,8 +108,12 @@ int rocksock_send(rocksock* sock, char* buffer, size_t bufsize, size_t chunksize
 int rocksock_recv(rocksock* sock, char* buffer, size_t bufsize, size_t chunksize, size_t* bytesread);
 int rocksock_readline(rocksock* sock, char* buffer, size_t bufsize, size_t* bytesread);
 int rocksock_disconnect(rocksock* sock);
+
 /* returns a string describing the last error or NULL */
 const char* rocksock_strerror(rocksock *sock);
+/* return a string describing in which subsytem the last error happened, or NULL */
+const char* rocksock_strerror_type(rocksock *sock);
+
 /* clears/free's/resets all internally used buffers. etc but doesn't free the rocksock itself, since it could be stack-alloced */
 int rocksock_clear(rocksock* sock);
 /* check if data is available for read. result will contain 1 if available, 0 if not available.
@@ -128,7 +135,8 @@ void rocksock_free(rocksock* s);
 
 //RcB: DEP "rocksock.c"
 //RcB: DEP "rocksock_add_proxy.c"
-//RcB: DEP "rocksock_variables.c"
+//RcB: DEP "rocksock_strerror.c"
+//RcB: DEP "rocksock_strerror_type.c"
 //RcB: DEP "rocksock_dynamic.c"
 //RcB: DEP "rocksock_readline.c"
 //RcB: DEP "rocksock_peek.c"
