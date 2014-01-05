@@ -1,0 +1,167 @@
+#!/bin/sh
+#set -x
+prefix=/usr/local
+
+libs=`cat << EOF
+EOF
+`
+clear_config() {
+	rm -f config.mak 2>/dev/null
+}
+
+add_config() {
+	printf "%s\n" "$1" >> config.mak
+}
+
+add_cflags() {
+	add_config "CFLAGS += $1"
+}
+
+add_ldflags() {
+	add_config "LDFLAGS += $1"
+}
+
+get_pkgconf_cflags() {
+	pkg-config --cflags "$1" 2>/dev/null
+}
+
+get_pkgconf_ldflags() {
+	pkg-config --libs "$1" 2>/dev/null
+}
+
+add_pkgconf_cflags() {
+	fallback="$2"
+	flags=$(get_pkgconf_cflags "$1")
+	[ -z "$flags" ] && flags="$fallback"
+	add_cflags "$flags"
+}
+
+add_pkgconf_ldflags() {
+	fallback="$2"
+	flags=$(get_pkgconf_ldflags "$1")
+	[ -z "$flags" ] && flags="$fallback"
+	add_ldflags "$flags"
+}
+
+add_lib() {
+	add_pkgconf_cflags "$1" "$2"
+	add_pkgconf_ldflags "$1" "$3"
+	return 0
+}
+
+usage() {
+	echo "supported arguments"
+	echo "--prefix=/path 		            default: $prefix"
+	echo "--exec_prefix=/path	            default: $prefix/bin"
+	echo "--bindir=/path		            default: $prefix/bin"
+	echo "--libdir=/path		            default: $prefix/lib"
+	echo "--includedir=/path	            default: $prefix/include"
+	echo "--sysconfdir=/path	            default: $prefix/etc"
+	echo "--with-ssl=[auto,cyassl,openssl,no]   default: auto"
+	echo "--disable-static                      default: no"
+	echo "--enable-shared                       default: no"
+	echo "--help : show this text"
+	exit 1
+}
+
+spliteq() {
+	arg=$1
+	echo "${arg#*=}"
+	#alternatives echo "$arg" | cut -d= -f2-
+	# or echo "$arg" | sed 's/[^=]*=//'
+}
+
+trylink () {
+printf "checking whether linking against %s works... " "$2"
+echo "int main(){};" > "$tmpc"
+if $CC "$2" -o /dev/null "$tmpc" >/dev/null 2>&1 ; then
+printf "yes\n"
+eval "$1=\"\${$1} \$2\""
+eval "$1=\${$1# }"
+return 0
+else
+printf "no\n"
+return 1
+fi
+}
+
+ssl_lib=auto
+parsearg() {
+	case "$1" in
+	--prefix=*) prefix=`spliteq $1`;;
+	--exec_prefix=*) exec_prefix=`spliteq $1`;;
+	--bindir=*) bindir=`spliteq $1`;;
+	--libdir=*) libdir=`spliteq $1`;;
+	--includedir=*) includedir=`spliteq $1`;;
+	--sysconfdir=*) sysconfdir=`spliteq $1`;;
+	--help) usage;;
+	--disable-static) disable_static=1 ;;
+	--disable-static=yes) disable_static=1 ;;
+	--enable-shared) enable_shared=1 ;;
+	--enable-shared=yes) enable_shared=1 ;;
+	--with-ssl=*) ssl_lib=`spliteq $1`;;
+	esac
+}
+
+while true ; do
+	case $1 in
+	-*) parsearg "$1"; shift;;
+	*) break ;;
+	esac
+done
+
+[ -z "$exec_prefix" ] && exec_prefix=$prefix
+[ -z "$libdir" ] && libdir=$prefix/lib
+[ -z "$includedir" ] && includedir=$prefix/include
+[ -z "$sysconfdir" ] && sysconfdir=$prefix/etc
+[ -z "$bindir" ] && bindir=$exec_prefix/bin
+[ -z "$CC" ] && CC=cc
+
+clear_config
+
+add_config "prefix = $prefix"
+add_config "exec_prefix = $exec_prefix"
+add_config "bindir = $bindir"
+add_config "libdir = $libdir"
+add_config "includedir = $includedir"
+add_config "sysconfdir = $sysconfdir"
+
+add_config "CC ?= $CC"
+[ -z "$CPPFLAGS" ] || add_config "CPPFLAGS ?= $CPPFLAGS"
+[ -z "$CFLAGS" ] ||   add_config "CFLAGS ?= $CFLAGS"
+
+for lib in $libs ; do add_lib "$lib" ; done
+
+#
+# Get a temp filename we can use
+#
+i=0
+set -C
+while : ; do i=$(($i+1))
+tmpc="./conf$$-$PPID-$i.c"
+2>|/dev/null > "$tmpc" && break
+test "$i" -gt 50 && fail "$0: cannot create temporary file $tmpc"
+done
+set +C
+trap 'rm "$tmpc"' EXIT INT QUIT TERM HUP
+
+
+if [ "$ssl_lib" = auto ] ; then
+	foo=
+	if trylink foo "-lcyassl" ; then ssl_lib=cyassl
+	elif trylink foo "-lssl" && trylink foo "-lcrypto" ; then ssl_lib=openssl
+	else ssl_lib=no
+	fi
+fi
+if [ ! "$ssl_lib" = no ] ; then
+	add_config "CFLAGS += -DUSE_SSL"
+	[ "$ssl_lib" = "openssl" ] && add_lib openssl "" "-lssl -lcrypto" && add_cflags "-DUSE_OPENSSL"
+	[ "$ssl_lib" = "cyassl" ] && add_lib cyassl "" "-lcyassl" && add_cflags "-DUSE_CYASSL"
+fi
+[ "$disable_static" = 1 ] && add_config "ALL_LIBS =" && enable_shared=1
+[ "$enable_shared" = 1 ] && add_config "ALL_LIBS += librocksock.so"
+
+
+echo "hint: if you intend to build a static binary with minimal size, try NO_DNS_SUPPORT, NO_STRDUP in CFLAGS"
+echo "config.mak successfully created. now run make && make install"
+
