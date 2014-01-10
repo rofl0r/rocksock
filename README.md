@@ -6,8 +6,9 @@ written in C.
 it was designed for small size, robustness, simplicity,
 static linking and fine-grained error reporting and
 configurability.
-programming in a non-blocking way is much simpler, and rocksock
-provides timeouts so the app doesn't get into a completely blocked
+programming in a blocking way is much simpler, but can lead to
+near infinite bloking. rocksock addresses this by providing
+timeouts so the app doesn't get into this completely blocked
 state and can react properly on any exceptional condition.
 making the app fit for SSL only requires enabling one flag, and
 SOCKS/HTTP proxy support is built-in as well.
@@ -27,6 +28,10 @@ SOCKS/HTTP proxy support is built-in as well.
   statically linked).
   of course once you build it with ssl support, ssl will definitely
   make use of malloc().
+  you need to add NO_STRDUP and NO_DNS_SUPPORT to your CFLAGS
+  so nothing that can call malloc gets pulled in, if you want a 
+  minimal static binary (in that case you have to pass ipv4
+  addresses in dotted notation).
 - optionally uses [libulz](https://github.com/rofl0r/libulz), 
   a lightweight C library, featuring things like
   a snprintf replacement which doesnt include code for float
@@ -37,14 +42,20 @@ SOCKS/HTTP proxy support is built-in as well.
   so if you use any SSL implementation, you won't gain anything
   by using libulz.
 
-due to its high configurability, it's not used like a typical lib,
-you typically write your app, include the rocksock header using
-a relative pathname, and then use the build tool 
-[rcb](https://github.com/rofl0r/rcb) on your main
-C file, supplying all config options as CFLAGS. rcb will then
-automatically find all required translation units and throw them at
-once at the compiler, giving perfect opportunities for link-time
-optimization.
+build:
+
+  for a "default" build, for example for a distribution, just
+  use ./configure && make as usual.
+
+advanced/customized build using RcB:
+
+  write your app, include the rocksock header using
+  a relative pathname, and then use the build tool 
+  [rcb](https://github.com/rofl0r/rcb) on your main
+  C file, supplying all config options as CFLAGS. rcb will then
+  automatically find all required translation units and throw them
+  at once at the compiler, giving perfect opportunities for link-time
+  optimization.
 
 typical tree structure:
 ```
