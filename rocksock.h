@@ -77,7 +77,7 @@ typedef struct {
 	char* password;
 } rs_proxy;
 
-typedef struct {
+typedef struct rocksock {
 	int socket;
 	int connected;
 	unsigned long timeout;
