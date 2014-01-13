@@ -15,7 +15,10 @@
 #define ROCKSOCK_FILENAME __FILE__
 #endif
 
-// tries to read exactly one line, until '\n', then appends a '\0'
+// tries to read exactly one line, until '\n', then overwrites the \n with \0
+// bytesread contains the number of bytes read till \n was encountered
+// (so 0 in case \n was the first char).
+// returns RS_E_OUT_OF_BUFFER if the line doesnt fit into the buffer.
 int rocksock_readline(rocksock* sock, char* buffer, size_t bufsize, size_t* bytesread) {
 	// TODO: make more efficient by peeking into the buffer (Flag MSG_PEEK to recv), instead of reading byte by byte
 	// would need a different approach for ssl though.
@@ -38,11 +41,9 @@ int rocksock_readline(rocksock* sock, char* buffer, size_t bufsize, size_t* byte
 			break;
 		}
 		if(*ptr == '\n') {
-			if(*bytesread < bufsize) {
-				buffer[*bytesread] = '\0';
-				return 0;
-			} else
-				break;
+			*ptr = 0;
+			*bytesread -= 1;
+			return 0;
 		}
 		ptr++;
 	}
