@@ -75,7 +75,7 @@ static const char* rs_errorMap[] = {
 
 const char* rocksock_strerror(rocksock *sock) {
 	int error = sock->lasterror.error;
-	switch(error) {
+	switch(sock->lasterror.errortype) {
 #ifndef NO_DNS_SUPPORT
 		case RS_ET_GAI:
 			return gai_strerror(error);
