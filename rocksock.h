@@ -113,6 +113,11 @@ const char* rocksock_strerror(rocksock *sock);
 /* return a string describing in which subsytem the last error happened, or NULL */
 const char* rocksock_strerror_type(rocksock *sock);
 
+#define rocksock_error_dprintf(FD, RS) \
+	dprintf(FD, "%s:%d - %s error: %s from %s:%d\n", \
+	__FILE__, __LINE__, rocksock_strerror_type(RS), rocksock_strerror(RS), \
+	(RS)->lasterror.file, (RS)->lasterror.line)
+
 /* clears/free's/resets all internally used buffers. etc but doesn't free the rocksock itself, since it could be stack-alloced */
 int rocksock_clear(rocksock* sock);
 /* check if data is available for read. result will contain 1 if available, 0 if not available.
