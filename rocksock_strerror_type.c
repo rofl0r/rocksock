@@ -7,6 +7,7 @@ static const char rs_errortype_map[][9] = {
 };
 
 const char* rocksock_strerror_type(rocksock *sock) {
-	if(sock->lasterror.errortype < RS_ET_MAX) return rs_errortype_map[sock->lasterror.errortype];
+	if(sock->lasterror.errortype < RS_ET_MAX)
+		return rs_errortype_map[sock->lasterror.errortype];
 	return 0;
 }
