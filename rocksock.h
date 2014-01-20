@@ -20,7 +20,7 @@ typedef enum {
 	RS_PT_HTTP
 } rs_proxyType;
 
-typedef enum {
+typedef enum rs_errorType {
 	RS_ET_OWN = 0,
 	RS_ET_SYS,
 	RS_ET_GAI,
@@ -28,7 +28,7 @@ typedef enum {
 	RS_ET_MAX
 } rs_errorType;
 
-typedef enum {
+typedef enum rs_error {
 	RS_E_NO_ERROR = 0,
 	RS_E_NULL = 1,
 	RS_E_EXCEED_PROXY_LIMIT = 2,
@@ -112,6 +112,9 @@ int rocksock_disconnect(rocksock* sock);
 const char* rocksock_strerror(rocksock *sock);
 /* return a string describing in which subsytem the last error happened, or NULL */
 const char* rocksock_strerror_type(rocksock *sock);
+
+enum rs_errorType rocksock_get_errortype(rocksock *sock);
+int rocksock_get_error(rocksock *sock);
 
 #define rocksock_error_dprintf(FD, RS) \
 	dprintf(FD, "%s:%d - %s error: %s from %s:%d\n", \
