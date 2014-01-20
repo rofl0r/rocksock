@@ -7,4 +7,5 @@ examples/rocksock_test3
 *.a
 *.so
 *.out
-
+*.rcb
+config.mak
