@@ -15,11 +15,8 @@
 #include "../rocksock.h"
 //RcB: DEP "../rocksock.c"
 
-#define checkerr if(ret) { \
-		if(sock.lasterror.failedProxy != -1) printf("failing proxy: %d\n", sock.lasterror.failedProxy); \
-		printf("%s:%d - error #%d: %s from %s:%d\n", __FILE__, __LINE__, sock.lasterror.error, sock.lasterror.errormsg, sock.lasterror.file, sock.lasterror.line); \
-		exit(2); \
-	}
+#define chk(X, ACTION) if(X) { rocksock_error_dprintf(2, psock); ACTION; }
+#define checkerr chk(ret, exit(2))
 
 int main(int argc, char** argv) {
 	rocksock sock;

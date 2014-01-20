@@ -1,22 +1,15 @@
 // gcc -Wall -g rocksock.c rocksock_test2.c -o rocksock_test2
-
 /*
- *
  * author: rofl0r
  *
  * License: LGPL 2.1+ with static linking exception
- *
- *
  */
 #include <stdio.h>
 #include <stdlib.h>
 #include "../rocksock.h"
-//RcB: DEP "../rocksock.c"
 
-#define checkerr if(ret) {\
-		printf("%s:%d - error #%d: %s from %s:%d\n", __FILE__, __LINE__, sock.lasterror.error, sock.lasterror.errormsg, sock.lasterror.file, sock.lasterror.line); \
-		exit(2); \
-	}
+#define chk(X, ACTION) if(X) { rocksock_error_dprintf(2, psock); ACTION; }
+#define checkerr chk(ret, exit(2))
 
 char peer0_0[] = {
 0x47, 0x45, 0x54, 0x20, 0x2f, 0x64, 0x66, 0x5f,
@@ -124,7 +117,7 @@ int main(int argc, char** argv) {
 			inbuf[bytesread] = '\0';
 			puts(inbuf);
 		}
-		printf("bytesread %d\n", bytesread);
+		printf("bytesread %zu\n", bytesread);
 	} while (bytesread == chunksize);
 	do {
 
@@ -134,7 +127,7 @@ int main(int argc, char** argv) {
 			inbuf[bytesread] = '\0';
 			puts(inbuf);
 		}
-		printf("bytesread %d\n", bytesread);
+		printf("bytesread %zu\n", bytesread);
 	} while (bytesread);
 	rocksock_disconnect(psock);
 	rocksock_clear(psock);
