@@ -141,6 +141,7 @@ void rocksock_free(rocksock* s);
 
 //RcB: DEP "rocksock.c"
 //RcB: DEP "rocksock_add_proxy.c"
+//RcB: DEP "rocksock_error.c"
 //RcB: DEP "rocksock_strerror.c"
 //RcB: DEP "rocksock_strerror_type.c"
 //RcB: DEP "rocksock_dynamic.c"
