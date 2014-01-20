@@ -16,6 +16,9 @@ LOBJS = $(OBJS:.o=.lo)
 SONAME = librocksock.so
 ANAME = librocksock.a
 
+EX_SRCS = $(sort $(wildcard examples/*.c))
+EX_PROGS = $(EX_SRCS:.c=.out)
+
 CFLAGS  += -Wall -std=c99 -D_GNU_SOURCE -pipe 
 INC     = 
 PIC     = -fPIC -shared
@@ -25,6 +28,9 @@ ALL_LIBS = $(ANAME)
 ALL_INCLUDES = rocksock.h
 
 -include config.mak
+
+examples: $(ALL_LIBS) $(EX_PROGS)
+	
 
 all: $(ALL_LIBS)
 
@@ -47,11 +53,16 @@ $(ANAME): $(OBJS)
 clean:
 	rm -f $(OBJS)
 	rm -f $(LOBJS)
+	rm -f $(EX_PROGS)
 
 %.o: %.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(INC) -c -o $@ $<
 
 %.lo: %.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(PIC) $(INC) -c -o $@ $<
+
+%.out: %.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(INC) -o $@ $< -l:librocksock.a $(LDFLAGS)
+
 
 .PHONY: all clean install
