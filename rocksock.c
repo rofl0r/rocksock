@@ -149,6 +149,7 @@ int rocksock_init(rocksock* sock) {
 	memset(sock, 0, sizeof(rocksock));
 	sock->lastproxy = -1;
 	sock->timeout = 60*1000;
+	sock->socket = -1;
 	return rocksock_seterror(sock, RS_ET_OWN, 0, NULL, 0);
 }
 
@@ -481,7 +482,7 @@ static int rocksock_operation(rocksock* sock, rs_operationType operation, char* 
 	size_t byteswanted;
 	char* bufptr = buffer;
 
-	if (!sock->socket) return rocksock_seterror(sock, RS_ET_OWN, RS_E_NO_SOCKET, ROCKSOCK_FILENAME, __LINE__);
+	if (sock->socket == -1) return rocksock_seterror(sock, RS_ET_OWN, RS_E_NO_SOCKET, ROCKSOCK_FILENAME, __LINE__);
 	if(operation == RS_OT_SEND) wfd = &fd;
 	else rfd = &fd;
 
@@ -553,8 +554,8 @@ int rocksock_disconnect(rocksock* sock) {
 #ifdef USE_SSL
 	rocksock_ssl_free_context(sock);
 #endif
-	if(sock->socket) close(sock->socket);
-	sock->socket = 0;
+	if(sock->socket != -1) close(sock->socket);
+	sock->socket = -1;
 	return rocksock_seterror(sock, RS_ET_OWN, 0, NULL, 0);
 }
 
