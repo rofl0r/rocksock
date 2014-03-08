@@ -32,6 +32,7 @@ int rocksock_peek(rocksock* sock, int *result) {
 	ssize_t readv;
 	if(!result)
 		return rocksock_seterror(sock, RS_ET_OWN, RS_E_NULL, ROCKSOCK_FILENAME, __LINE__);
+	if (sock->socket == -1) return rocksock_seterror(sock, RS_ET_OWN, RS_E_NO_SOCKET, ROCKSOCK_FILENAME, __LINE__);
 #ifdef USE_SSL
 	if(sock->ssl && rocksock_ssl_pending(sock)) {
 		*result = 1;
