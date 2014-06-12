@@ -101,8 +101,8 @@ void rocksock_free_ssl(void);
 /* all rocksock functions that return int return 0 on success or an errornumber on failure */
 int rocksock_init(rocksock* sock);
 int rocksock_set_timeout(rocksock* sock, unsigned long timeout_millisec);
-int rocksock_add_proxy(rocksock* sock, rs_proxyType proxytype, char* host, unsigned short port, char* username, char* password);
-int rocksock_connect(rocksock* sock, char* host, unsigned short port, int useSSL);
+int rocksock_add_proxy(rocksock* sock, rs_proxyType proxytype, const char* host, unsigned short port, const char* username, const char* password);
+int rocksock_connect(rocksock* sock, const char* host, unsigned short port, int useSSL);
 int rocksock_send(rocksock* sock, char* buffer, size_t bufsize, size_t chunksize, size_t* byteswritten);
 int rocksock_recv(rocksock* sock, char* buffer, size_t bufsize, size_t chunksize, size_t* bytesread);
 int rocksock_readline(rocksock* sock, char* buffer, size_t bufsize, size_t* bytesread);

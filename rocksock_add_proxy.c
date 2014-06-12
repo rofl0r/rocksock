@@ -12,7 +12,7 @@
 #define ROCKSOCK_FILENAME __FILE__
 #endif
 
-int rocksock_add_proxy(rocksock* sock, rs_proxyType proxytype, char* host, unsigned short port, char* username, char* password) {
+int rocksock_add_proxy(rocksock* sock, rs_proxyType proxytype, const char* host, unsigned short port, const char* username, const char* password) {
 	rs_proxy* prx;
 	if (!sock)
 		return RS_E_NULL;

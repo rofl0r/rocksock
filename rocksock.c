@@ -229,7 +229,7 @@ static int rocksock_setup_socks4_header(rocksock* sock, int is4a, char* buffer, 
 	return rocksock_seterror(sock, RS_ET_OWN, 0, NULL, 0);
 }
 
-int rocksock_connect(rocksock* sock, char* host, unsigned short port, int useSSL) {
+int rocksock_connect(rocksock* sock, const char* host, unsigned short port, int useSSL) {
 	ptrdiff_t px;
 	int ret, trysocksv4a;
 	rs_hostInfo* connector;
