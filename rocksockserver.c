@@ -25,6 +25,11 @@
 
 #ifndef NO_LOG
 #include "../lib/include/logger.h"
+#define LOGP(X) log_perror(X)
+#else
+#define LOGP(X) do {} while(0)
+#endif
+
 #endif
 #include "../lib/include/strlib.h"
 #include "../lib/include/stringptr.h"
@@ -113,26 +118,20 @@ int rocksockserver_init(rocksockserver* srv, char* listenip, unsigned short port
 #else
 	srv->listensocket = socket(AF_INET, SOCK_STREAM, 0);
 	if(srv->listensocket < 0) {
-		# ifndef NO_LOG
-		log_perror("socket");
-		# endif
+		LOGP("socket");
 		return -1;
 	}
 	setsockopt(srv->listensocket, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
 	if(bind(srv->listensocket, (struct sockaddr*) &conn.hostaddr, sizeof(struct sockaddr_in)) < 0) {
 		close(srv->listensocket);
-		# ifndef NO_LOG
-		log_perror("bind");
-		# endif
+		LOGP("bind");
 		return -1;
 	}
 
 #endif
 	// listen
 	if (listen(srv->listensocket, 10) == -1) {
-#ifndef NO_LOG
-		log_perror("listen");
-#endif
+		LOGP("listen");
 		ret = -2;
 	} else {
 		FD_SET(srv->listensocket, &srv->master);
@@ -186,11 +185,7 @@ int rocksockserver_loop(rocksockserver* srv,
 		write_fds = srv->master;
 
 		if ((srv->numfds = select(srv->maxfd+1, &read_fds, &write_fds, NULL, NULL)) && srv->numfds == -1)
-#ifndef NO_LOG
-			log_perror("select");
-#else
-			;
-#endif
+			LOGP("select");
 
 		if(!srv->numfds) continue;
 
@@ -261,9 +256,7 @@ int rocksockserver_loop(rocksockserver* srv,
 			newfd = accept(srv->listensocket, (struct sockaddr *)&remoteaddr, &addrlen);
 
 			if (newfd == -1) {
-#ifndef NO_LOG
-				log_perror("accept");
-#endif
+				LOGP("accept");
 			} else {
 				if(newfd >= USER_MAX_FD)
 					close(newfd); // only USER_MAX_FD connections can be handled.
@@ -280,9 +273,7 @@ int rocksockserver_loop(rocksockserver* srv,
 					if (nbytes == 0) {
 						if(on_clientdisconnect) on_clientdisconnect(srv->userdata, k);
 					} else {
-#ifndef NO_LOG
-						log_perror("recv");
-#endif
+						LOGP("recv");
 					}
 					rocksockserver_disconnect_client(srv, k);
 				} else {
