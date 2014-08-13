@@ -30,7 +30,6 @@
 #define LOGP(X) do {} while(0)
 #endif
 
-#endif
 #include "../lib/include/strlib.h"
 #include "../lib/include/stringptr.h"
 #include "../lib/include/timelib.h"
