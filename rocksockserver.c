@@ -35,7 +35,7 @@
 #include "../lib/include/timelib.h"
 
 typedef struct {
-	char* host;
+	const char* host;
 	unsigned short port;
 #ifndef IPV4_ONLY
 	struct addrinfo* hostaddr;
@@ -76,7 +76,7 @@ int rocksockserver_resolve_host(rs_hostInfo* hostinfo) {
 #endif
 }
 
-int rocksockserver_init(rocksockserver* srv, char* listenip, unsigned short port, void* userdata) {
+int rocksockserver_init(rocksockserver* srv, const char* listenip, unsigned short port, void* userdata) {
 	int ret = 0;
 	int yes = 1;
 	rs_hostInfo conn;
