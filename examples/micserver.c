@@ -18,12 +18,13 @@
 #include "micbuffer.h"
 
 #include "../rocksockserver.h"
-#include "../../lib/include/sblist.h"
-#include "../../lib/include/macros.h"
 
 
 //RcB: CFLAGS "-std=c99 -D_GNU_SOURCE -DVERBOSE"
 //RcB: LINK "-lasound -lpthread"
+
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+#define MICSERVER_NUMBUFFERS 20
 
 #ifdef VERBOSE
 #define DPRINTF(fd, ...) dprintf(fd, __VA_ARGS__)
@@ -44,28 +45,21 @@ typedef struct client {
 
 typedef struct server_state {
 	rocksockserver srv;
-	sblist *clients;
 	const char* audiodevice;
 } server;
 
-struct client *client_from_fd(sblist *clients, int fd) {
-	struct client* c;
-	sblist_iter(clients, c) {
-		if(c->fd == fd) return c;
-	}
-	return 0;
-}
+static struct progstate {
+	server s;
+	client client;
+} p;
 
 static void disconnect_client(server* s, int fd) {
-	struct client *c;
-	sblist_iter_counter(s->clients, i, c) {
-		if(c->fd == fd) {
-			c->terminate = -1;
-			pthread_join(c->thr, 0);
-			snd_pcm_close(c->playback_handle);
-			sblist_delete(s->clients, i);
-			break;
-		}
+	if(p.client.fd == fd) {
+		struct client* c = &p.client;
+		c->terminate = -1;
+		pthread_join(c->thr, 0);
+		snd_pcm_close(c->playback_handle);
+		c->fd = -1;
 	}
 	rocksockserver_disconnect_client(&s->srv, fd);
 }
@@ -160,12 +154,13 @@ static void *c_thread(void *userdata) {
 static int on_cconnect (void* userdata, struct sockaddr_storage* clientaddr, int fd) {
 	(void) clientaddr;
 	server* s = userdata;
-	struct client cb = {.fd = fd};
-	if(sblist_getsize(s->clients) || !sblist_add(s->clients, &cb)) {
+	if(p.client.fd != -1) {
 		disconnect_client(s, fd);
 		return -1;
 	}
-	struct client* c = client_from_fd(s->clients, fd);
+	struct client* c = &p.client;
+	c->fd = fd;
+	c->terminate = 0;
 	c->playback_handle = init_playback_device(s->audiodevice);
 	pthread_mutex_init(&c->mtx, 0);
 	pthread_create(&c->thr, 0, c_thread, c);
@@ -175,8 +170,7 @@ static int on_cconnect (void* userdata, struct sockaddr_storage* clientaddr, int
 static int on_cread (void* userdata, int fd, size_t dummy) {
 	(void) dummy;
 	server* s = userdata;
-	struct client *c;
-	if(!(c = client_from_fd(s->clients, fd))) return -1;
+	struct client *c = &p.client;
 	unsigned x = c->samples_recvd % ARRAY_SIZE(c->wave);
 	DPRINTF(2, "receiving samplebuf %u\n", x);
 	if(sizeof(c->wave[0]) != recv(fd, c->wave[x], sizeof(c->wave[0]), 0)) {
@@ -191,14 +185,12 @@ static int on_cread (void* userdata, int fd, size_t dummy) {
 
 static int on_cwantsdata (void* userdata, int fd) {
 	server* s = userdata;
-	struct client *c;
-	if(!(c = client_from_fd(s->clients, fd))) return -1;
 	return 0;
 }
 
 int main(int argc, char** argv) {
-	server sv, *s = &sv;
-	s->clients = sblist_new(sizeof(struct client), 32);
+	server *s = &p.s;
+	p.client.fd = -1;
 	s->audiodevice = argc > 1 ? argv[1] : "default";
 	const int port = 9999;
 	const char* listenip = "0.0.0.0";
