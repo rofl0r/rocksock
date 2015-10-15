@@ -20,6 +20,7 @@
 #define USER_MAX_FD FD_SETSIZE
 #endif
 
+typedef void (*perror_func)(const char*);
 typedef struct {
 	fd_set master;
 	int listensocket;
@@ -28,6 +29,7 @@ typedef struct {
 	int signalfd;
 	void* userdata;
 	long sleeptime_us;
+	perror_func perr;
 } rocksockserver;
 
 void rocksockserver_set_sleeptime(rocksockserver* srv, long microsecs);
@@ -35,6 +37,7 @@ int rocksockserver_disconnect_client(rocksockserver* srv, int client);
 int rocksockserver_init(rocksockserver* srv, const char* listenip, unsigned short port, void* userdata);
 void rocksockserver_watch_fd(rocksockserver* srv, int newfd);
 void rocksockserver_set_signalfd(rocksockserver* srv, int signalfd);
+void rocksockserver_set_perrorfunc(rocksockserver* srv, perror_func perr);
 int rocksockserver_loop(rocksockserver* srv,
 			char* buf, size_t bufsize,
 			int (*on_clientconnect) (void* userdata, struct sockaddr_storage* clientaddr, int fd), 

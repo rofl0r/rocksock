@@ -23,15 +23,9 @@
 
 #include "endianness.h"
 
-#ifndef NO_LOG
-#include "../lib/include/logger.h"
-#define LOGP(X) log_perror(X)
-#else
-#define LOGP(X) do {} while(0)
-#endif
+#define LOGP(X) do { if(srv->perr) srv->perr(X); } while(0)
 
 #include "../lib/include/strlib.h"
-#include "../lib/include/stringptr.h"
 #include "../lib/include/timelib.h"
 
 typedef struct {
@@ -57,16 +51,7 @@ int rocksockserver_resolve_host(rs_hostInfo* hostinfo) {
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_PASSIVE;
 	if(!(ports = intToString(hostinfo->port, pbuf))) return -1;
-
-	ret = getaddrinfo(hostinfo->host, ports, &hints, &hostinfo->hostaddr);
-	if(!ret) {
-		return 0;
-	} else {
-		#ifndef NO_LOG
-		log_put(1, VARISL("error resolving: "), VARICC(gai_strerror(ret)), NULL);
-		#endif
-		return ret;
-	}
+	return getaddrinfo(hostinfo->host, ports, &hints, &hostinfo->hostaddr);
 #else
 	memset(&hostinfo->hostaddr, 0, sizeof(struct sockaddr_in));
 	ipv4fromstring(hostinfo->host, (unsigned char*) &hostinfo->hostaddr.sin_addr);
@@ -76,6 +61,14 @@ int rocksockserver_resolve_host(rs_hostInfo* hostinfo) {
 #endif
 }
 
+/* returns 0 on success.
+   possible error return codes:
+   -1: erroneus parameter
+   -2: bind() failed
+   -3: socket() failed
+   -4: listen() failed
+   positive number: dns error, pass to gai_strerror()
+*/
 int rocksockserver_init(rocksockserver* srv, const char* listenip, unsigned short port, void* userdata) {
 	int ret = 0;
 	int yes = 1;
@@ -107,31 +100,29 @@ int rocksockserver_init(rocksockserver* srv, const char* listenip, unsigned shor
 		break;
 	}
 	if (!p) {
-		# ifndef NO_LOG
-		log_puts(1, SPLITERAL("selectserver: failed to bind\n"));
-		# endif
-		ret = -1;
+		LOGP("bind");
+		ret = -2;
 	}
 	freeaddrinfo(conn.hostaddr);
-	if(ret == -1) return -1;
+	if(ret == -2) return -2;
 #else
 	srv->listensocket = socket(AF_INET, SOCK_STREAM, 0);
 	if(srv->listensocket < 0) {
 		LOGP("socket");
-		return -1;
+		return -3;
 	}
 	setsockopt(srv->listensocket, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
 	if(bind(srv->listensocket, (struct sockaddr*) &conn.hostaddr, sizeof(struct sockaddr_in)) < 0) {
 		close(srv->listensocket);
 		LOGP("bind");
-		return -1;
+		return -2;
 	}
 
 #endif
 	// listen
 	if (listen(srv->listensocket, 10) == -1) {
 		LOGP("listen");
-		ret = -2;
+		ret = -4;
 	} else {
 		FD_SET(srv->listensocket, &srv->master);
 		srv->maxfd = srv->listensocket;
@@ -231,20 +222,14 @@ int rocksockserver_loop(rocksockserver* srv,
 			setptr = &read_fds;
 			goto loopstart;
 		} else {
-#ifndef NO_LOG
-			log_puts(2, SPLITERAL("FATAL"));
-#endif
+			LOGP("FATAL");
 			/*
 			printf("maxfd %d, k %d, numfds %d, set %d\n", srv->maxfd, k, srv->numfds, *(int*)(fdptr));
 			for(k = 0; k < USER_MAX_FD; k++)
 				if(FD_ISSET(k, setptr))
 					printf("bit set: %d\n", k);
 			*/
-#ifndef NO_ABORT
-			abort();
-#else
-			exit(111);
-#endif
+			return 1;
 		}
 
 		handleread:
