@@ -196,6 +196,7 @@ int main(int argc, char** argv) {
 	const char* listenip = "0.0.0.0";
 	if(rocksockserver_init(&s->srv, listenip, port, (void*) s)) return -1;
 	rocksockserver_set_sleeptime(&s->srv, BITRATE);
+	rocksockserver_set_perrorfunc(&s->srv, perror);
 	if(rocksockserver_loop(&s->srv, NULL, 0,
 	                       &on_cconnect, &on_cread,
 	                       &on_cwantsdata, &on_cdisconnect)) return -2;
