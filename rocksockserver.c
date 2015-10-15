@@ -25,8 +25,21 @@
 
 #define LOGP(X) do { if(srv->perr) srv->perr(X); } while(0)
 
+#ifdef USE_LIBULZ
 #include "../lib/include/strlib.h"
 #include "../lib/include/timelib.h"
+#else
+#include <stdio.h>
+#include <arpa/inet.h>
+#define microsleep(X) usleep(X)
+static inline char* my_intToString(int i, char *b, size_t s) {
+	int x = snprintf(b, s, "%d", i);
+	if(x > 0 && x < s) return b;
+	return 0;
+}
+#define intToString(i, b) my_intToString(i, b, sizeof(b))
+#define ipv4fromstring(s, b) inet_aton(s, (struct in_addr *)(void*)(b))
+#endif
 
 typedef struct {
 	const char* host;
