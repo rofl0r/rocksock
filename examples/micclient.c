@@ -4,7 +4,7 @@
  * License: LGPL 2.1+ with static linking exception
 
  * streams microphone input to a server
- * use aplay -L to see available alsa device names
+ * use arecord -L to see available alsa device names
 
  */
 #include <stdio.h>
