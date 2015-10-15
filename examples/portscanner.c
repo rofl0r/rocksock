@@ -1,4 +1,4 @@
-// use rcb to compile: rcb rocksock_test.c
+// use rcb to compile: rcb portscanner.c
 
 /*
  *
