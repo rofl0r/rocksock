@@ -7,8 +7,8 @@ it was designed for small size, robustness, simplicity,
 static linking and fine-grained error reporting and
 configurability.
 programming in a blocking way is much simpler, but can lead to
-near infinite bloking. rocksock addresses this by providing
-timeouts so the app doesn't get into this completely blocked
+near infinite blocking. rocksock addresses this by providing
+timeouts so the app doesn't get into a completely blocked
 state and can react properly on any exceptional condition.
 making the app fit for SSL only requires enabling one flag, and
 SOCKS/HTTP proxy support is built-in as well.
