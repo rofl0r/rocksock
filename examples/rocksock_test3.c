@@ -33,8 +33,8 @@ int main(int argc, char** argv) {
 #ifdef USE_SSL
 	rocksock_init_ssl();
 #endif
-
-	rocksock_init(psock);
+	rs_proxy proxies[4];
+	rocksock_init(psock, proxies);
 	rocksock_set_timeout(psock, 10000);
 	//ret = rocksock_connect(psock, "b12.wimbli.com", 80, 0);
 	rocksock_add_proxy(psock, RS_PT_SOCKS4, "127.0.0.1", 9050, NULL, NULL);

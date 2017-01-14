@@ -64,7 +64,7 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 
-	rocksock_init(psock);
+	rocksock_init(psock, NULL);
 	rocksock_set_timeout(psock, 10000);
 
 	ret = rocksock_connect(psock, argv[1], 9999, 0);

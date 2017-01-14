@@ -144,12 +144,13 @@ int rocksock_set_timeout(rocksock* sock, unsigned long timeout_millisec) {
 	return rocksock_seterror(sock, RS_ET_OWN, 0, NULL, 0);
 }
 
-int rocksock_init(rocksock* sock) {
+int rocksock_init(rocksock* sock, rs_proxy *proxies) {
 	if (!sock) return RS_E_NULL;
 	memset(sock, 0, sizeof(rocksock));
 	sock->lastproxy = -1;
 	sock->timeout = 60*1000;
 	sock->socket = -1;
+	sock->proxies = proxies;
 	return rocksock_seterror(sock, RS_ET_OWN, 0, NULL, 0);
 }
 
@@ -559,7 +560,7 @@ int rocksock_disconnect(rocksock* sock) {
 int rocksock_clear(rocksock* sock) {
 	if (!sock) return RS_E_NULL;
 	ptrdiff_t i;
-	if(sock->lastproxy >= 0) {
+	if(sock->proxies && sock->lastproxy >= 0) {
 		for (i=0;i<=sock->lastproxy;i++) {
 #ifndef NO_STRDUP
 			if(sock->proxies[i].username)
@@ -574,7 +575,7 @@ int rocksock_clear(rocksock* sock) {
 			sock->proxies[i].hostinfo.host = NULL;
 		}
 	}
-
+	sock->proxies = 0;
 	return rocksock_seterror(sock, RS_ET_OWN, 0, NULL, 0);
 }
 

@@ -11,8 +11,6 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 
-#define MAX_PROXIES 16
-
 typedef enum {
 	RS_PT_NONE = 0,
 	RS_PT_SOCKS4,
@@ -54,7 +52,8 @@ typedef enum rs_error {
 	RS_E_PROXY_COMMAND_NOT_SUPPORTED = 22,
 	RS_E_PROXY_ADDRESSTYPE_NOT_SUPPORTED = 23,
 	RS_E_REMOTE_DISCONNECTED = 24,
-	RS_E_MAX_ERROR = 25
+	RS_E_NO_PROXYSTORAGE = 25,
+	RS_E_MAX_ERROR = 26
 } rs_error;
 
 typedef struct {
@@ -81,7 +80,7 @@ typedef struct rocksock {
 	int socket;
 	int connected;
 	unsigned long timeout;
-	rs_proxy proxies[MAX_PROXIES];
+	rs_proxy *proxies;
 	ptrdiff_t lastproxy;
 	rs_errorInfo lasterror;
 	void *ssl;
@@ -98,7 +97,9 @@ void rocksock_free_ssl(void);
 #endif
 
 /* all rocksock functions that return int return 0 on success or an errornumber on failure */
-int rocksock_init(rocksock* sock);
+/* rocksock_init: pass empty rocksock struct and if you want to use proxies,
+   an array of rs_proxy's that you need to allocate yourself. */
+int rocksock_init(rocksock* sock, rs_proxy *proxies);
 int rocksock_set_timeout(rocksock* sock, unsigned long timeout_millisec);
 int rocksock_add_proxy(rocksock* sock, rs_proxyType proxytype, const char* host, unsigned short port, const char* username, const char* password);
 int rocksock_connect(rocksock* sock, const char* host, unsigned short port, int useSSL);

@@ -16,14 +16,14 @@ int rocksock_add_proxy(rocksock* sock, rs_proxyType proxytype, const char* host,
 	rs_proxy* prx;
 	if (!sock)
 		return RS_E_NULL;
-	if(sock->lastproxy+1 >= MAX_PROXIES)
-		return rocksock_seterror(sock, RS_ET_OWN, RS_E_EXCEED_PROXY_LIMIT, ROCKSOCK_FILENAME, __LINE__);
 	if(!host)
 		return rocksock_seterror(sock, RS_ET_OWN, RS_E_NULL, ROCKSOCK_FILENAME, __LINE__);
 	if(proxytype == RS_PT_SOCKS4 && (username || password))
 		return rocksock_seterror(sock, RS_ET_OWN, RS_E_SOCKS4_NOAUTH, ROCKSOCK_FILENAME, __LINE__);
 	if(proxytype == RS_PT_SOCKS5 && ((username && strlen(username) > 255) || (password && strlen(password) > 255)))
 		return rocksock_seterror(sock, RS_ET_OWN, RS_E_SOCKS5_AUTH_EXCEEDSIZE, ROCKSOCK_FILENAME, __LINE__);
+	if(!sock->proxies)
+		return rocksock_seterror(sock, RS_ET_OWN, RS_E_NO_PROXYSTORAGE, ROCKSOCK_FILENAME, __LINE__);
 	sock->lastproxy++;
 	prx = &sock->proxies[sock->lastproxy];
 	prx->hostinfo.port = port;

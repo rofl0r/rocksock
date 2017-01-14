@@ -201,7 +201,8 @@ int main(int argc, char**argv) {
 			}
 			sleep(connected ? PROCWAIT_SEC : 2);
 			rocksock rs, *r = &rs;
-			rocksock_init(r);
+			rs_proxy proxies[1];
+			rocksock_init(r, proxies);
 			//rocksock_set_timeout(r, (TIMEOUT_SEC / (fails+1)) * 1000);
 			rocksock_set_timeout(r, (TIMEOUT_SEC / 1) * 1000);
 			char socksbuf[128];
