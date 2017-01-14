@@ -16,7 +16,8 @@ LOBJS = $(OBJS:.o=.lo)
 SONAME = librocksock.so
 ANAME = librocksock.a
 
-EX_SRCS = $(sort $(wildcard examples/*.c))
+#EX_SRCS = $(sort $(wildcard examples/*.c))
+EX_SRCS = examples/rocksock_test2.c examples/rocksock_test3.c
 EX_PROGS = $(EX_SRCS:.c=.out)
 
 CFLAGS  += -Wall -std=c99 -D_GNU_SOURCE -pipe 
@@ -61,8 +62,10 @@ clean:
 %.lo: %.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(PIC) $(INC) -c -o $@ $<
 
+examples/micserver.out: LDFLAGS+=-lasound
+
 %.out: %.c
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(INC) -o $@ $< -l:librocksock.a $(LDFLAGS)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(INC) -o $@ $< -L. -lrocksock $(LDFLAGS)
 
 
 .PHONY: all clean install
