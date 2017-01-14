@@ -83,7 +83,6 @@ typedef struct rocksock {
 	unsigned long timeout;
 	rs_proxy proxies[MAX_PROXIES];
 	ptrdiff_t lastproxy;
-	rs_hostInfo hostinfo;
 	rs_errorInfo lasterror;
 	void *ssl;
 	void *sslctx;

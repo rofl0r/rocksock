@@ -232,6 +232,7 @@ static int rocksock_setup_socks4_header(rocksock* sock, int is4a, char* buffer, 
 int rocksock_connect(rocksock* sock, const char* host, unsigned short port, int useSSL) {
 	ptrdiff_t px;
 	int ret, trysocksv4a;
+	rs_hostInfo targethost;
 	rs_hostInfo* connector;
 	rs_proxy dummy;
 	rs_proxy* targetproxy;
@@ -244,17 +245,13 @@ int rocksock_connect(rocksock* sock, const char* host, unsigned short port, int 
 #ifndef USE_SSL
 	if (useSSL) return rocksock_seterror(sock, RS_ET_OWN, RS_E_NO_SSL, ROCKSOCK_FILENAME, __LINE__);
 #endif
-#ifdef NO_STRDUP
-	sock->hostinfo.host = host;
-#else
-	sock->hostinfo.host = strdup(host);
-#endif
-	sock->hostinfo.port = port;
+	targethost.host = host;
+	targethost.port = port;
 
 	if(sock->lastproxy >= 0)
 		connector = &sock->proxies[0].hostinfo;
 	else
-		connector = &sock->hostinfo;
+		connector = &targethost;
 
 	rs_resolveStorage stor;
 
@@ -269,7 +266,7 @@ int rocksock_connect(rocksock* sock, const char* host, unsigned short port, int 
 	if(ret) goto check_proxy0_failure;
 
 	if(sock->lastproxy >= 0) {
-		dummy.hostinfo = sock->hostinfo;
+		dummy.hostinfo = targethost;
 		dummy.password = NULL;
 		dummy.username = NULL;
 		dummy.proxytype = RS_PT_NONE;
@@ -511,7 +508,7 @@ static int rocksock_operation(rocksock* sock, rs_operationType operation, char* 
 		ret=select(sock->socket+1, rfd, wfd, NULL, sock->timeout ? make_timeval(&tv, sock->timeout) : NULL);
 		if(!FD_ISSET(sock->socket, &fd)) rocksock_seterror(sock, RS_ET_OWN, RS_E_NULL, ROCKSOCK_FILENAME, __LINE__); // temp test
 		if(ret == -1) {
-			//printf("h: %s, skt: %d, to: %d:%d\n", sock->hostinfo.host, sock->socket, tv.tv_sec, tv.tv_usec);
+			//printf("h: %s, skt: %d, to: %d:%d\n", targethost.host, sock->socket, tv.tv_sec, tv.tv_usec);
 			return rocksock_seterror(sock, RS_ET_SYS, errno, ROCKSOCK_FILENAME, __LINE__);
 		}
 		else if(!ret) return rocksock_seterror(sock, RS_ET_OWN, RS_OT_READ ? RS_E_HIT_READTIMEOUT : RS_E_HIT_WRITETIMEOUT, ROCKSOCK_FILENAME, __LINE__);
@@ -577,11 +574,6 @@ int rocksock_clear(rocksock* sock) {
 			sock->proxies[i].hostinfo.host = NULL;
 		}
 	}
-#ifndef NO_STRDUP
-	if(sock->hostinfo.host)
-		free(sock->hostinfo.host);
-#endif
-	sock->hostinfo.host = NULL;
 
 	return rocksock_seterror(sock, RS_ET_OWN, 0, NULL, 0);
 }
