@@ -13,7 +13,7 @@ static const char rs_errorMap[][3] = {
 	"0" , "1" , "2" , "3" , "4" , "5" , "6" , "7",
 	"8" , "9" , "10", "11", "12", "13", "14", "15",
 	"16", "17", "18", "19", "20", "21", "22", "23",
-	"24", "25"
+	"24", "25", "26"
 };
 
 #else
@@ -71,6 +71,8 @@ static const char* rs_errorMap[] = {
 	"remote socket closed connection",
 	//RS_E_NO_PROXYSTORAGE = 25,
 	"no proxy storage assigned",
+	//RS_E_HOSTNAME_TOO_LONG = 26,
+	"hostname exceeds 255 chars",
 };
 
 #endif

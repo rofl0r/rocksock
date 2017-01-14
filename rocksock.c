@@ -1,10 +1,10 @@
 /*
- * author: rofl0r (C) 2011-2013
+ * author: rofl0r (C) 2011-2017
  * License: LGPL 2.1+ with static linking exception
  */
 
 /*
- * recognized defines: USE_SSL, ROCKSOCK_FILENAME, NO_DNS_SUPPORT, NO_STRDUP
+ * recognized defines: USE_SSL, ROCKSOCK_FILENAME, NO_DNS_SUPPORT
  */
 
 #undef _POSIX_C_SOURCE
@@ -100,7 +100,7 @@ int rocksock_seterror(rocksock* sock, rs_errorType errortype, int error, const c
 //#define NO_DNS_SUPPORT
 static int rocksock_resolve_host(rocksock* sock, rs_hostInfo* hostinfo, rs_resolveStorage* result) {
 	if (!sock) return RS_E_NULL;
-	if (!hostinfo || !hostinfo->host || !hostinfo->port) return rocksock_seterror(sock, RS_ET_OWN, RS_E_NULL, ROCKSOCK_FILENAME, __LINE__);;
+	if (!hostinfo || !hostinfo->host[0] || !hostinfo->port) return rocksock_seterror(sock, RS_ET_OWN, RS_E_NULL, ROCKSOCK_FILENAME, __LINE__);;
 
 	result->hostaddr = &(result->hostaddr_buf);
 
@@ -243,10 +243,13 @@ int rocksock_connect(rocksock* sock, const char* host, unsigned short port, int 
 	if (!sock) return RS_E_NULL;
 	if (!host || !port)
 		return rocksock_seterror(sock, RS_ET_OWN, RS_E_NULL, ROCKSOCK_FILENAME, __LINE__);
+	size_t hl = strlen(host);
+	if(hl > 255)
+		return rocksock_seterror(sock, RS_ET_OWN, RS_E_HOSTNAME_TOO_LONG, ROCKSOCK_FILENAME, __LINE__);
 #ifndef USE_SSL
 	if (useSSL) return rocksock_seterror(sock, RS_ET_OWN, RS_E_NO_SSL, ROCKSOCK_FILENAME, __LINE__);
 #endif
-	targethost.host = host;
+	memcpy(targethost.host, host, hl+1);
 	targethost.port = port;
 
 	if(sock->lastproxy >= 0)
@@ -268,8 +271,8 @@ int rocksock_connect(rocksock* sock, const char* host, unsigned short port, int 
 
 	if(sock->lastproxy >= 0) {
 		dummy.hostinfo = targethost;
-		dummy.password = NULL;
-		dummy.username = NULL;
+		dummy.password[0] = 0;
+		dummy.username[0] = 0;
 		dummy.proxytype = RS_PT_NONE;
 		for(px = 0; px <= sock->lastproxy; px++) {
 			if(px == sock->lastproxy)
@@ -316,7 +319,7 @@ int rocksock_connect(rocksock* sock, const char* host, unsigned short port, int 
 				case RS_PT_SOCKS5:
 					p = socksdata;
 					*p++ = 5;
-					if(sock->proxies[px].username && sock->proxies[px].password) {
+					if(sock->proxies[px].username[0] && sock->proxies[px].password[0]) {
 						*p++ = 2;
 						*p++ = 0;
 						*p++ = 2;
@@ -337,8 +340,7 @@ int rocksock_connect(rocksock* sock, const char* host, unsigned short port, int 
 						ret = rocksock_seterror(sock, RS_ET_OWN, RS_E_PROXY_AUTH_FAILED, ROCKSOCK_FILENAME, __LINE__);
 						goto proxyfailure;
 					} else if (socksdata[1] == 2) {
-						if( sock->proxies[px].username &&  sock->proxies[px].password &&
-						   *sock->proxies[px].username && *sock->proxies[px].password) {
+						if(sock->proxies[px].username[0] && sock->proxies[px].password[0]) {
 							/*
 							+----+------+----------+------+----------+
 							|VER | ULEN |  UNAME   | PLEN |  PASSWD  |
@@ -348,11 +350,11 @@ int rocksock_connect(rocksock* sock, const char* host, unsigned short port, int 
 							*/
 							p = socksdata;
 							*p++ = 1;
-							bytes = strlen(sock->proxies[px].username) & 0xFF;
+							bytes = strlen(sock->proxies[px].username);
 							*p++ = bytes;
 							memcpy(p, sock->proxies[px].username, bytes);
 							p += bytes;
-							bytes = strlen(sock->proxies[px].password) & 0xFF;
+							bytes = strlen(sock->proxies[px].password);
 							*p++ = bytes;
 							memcpy(p, sock->proxies[px].password, bytes);
 							p += bytes;
@@ -559,22 +561,7 @@ int rocksock_disconnect(rocksock* sock) {
 
 int rocksock_clear(rocksock* sock) {
 	if (!sock) return RS_E_NULL;
-	ptrdiff_t i;
-	if(sock->proxies && sock->lastproxy >= 0) {
-		for (i=0;i<=sock->lastproxy;i++) {
-#ifndef NO_STRDUP
-			if(sock->proxies[i].username)
-				free(sock->proxies[i].username);
-			if(sock->proxies[i].password)
-				free(sock->proxies[i].password);
-			if(sock->proxies[i].hostinfo.host)
-				free(sock->proxies[i].hostinfo.host);
-#endif
-			sock->proxies[i].username = NULL;
-			sock->proxies[i].password = NULL;
-			sock->proxies[i].hostinfo.host = NULL;
-		}
-	}
+	sock->lastproxy = -1;
 	sock->proxies = 0;
 	return rocksock_seterror(sock, RS_ET_OWN, 0, NULL, 0);
 }

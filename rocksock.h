@@ -53,7 +53,8 @@ typedef enum rs_error {
 	RS_E_PROXY_ADDRESSTYPE_NOT_SUPPORTED = 23,
 	RS_E_REMOTE_DISCONNECTED = 24,
 	RS_E_NO_PROXYSTORAGE = 25,
-	RS_E_MAX_ERROR = 26
+	RS_E_HOSTNAME_TOO_LONG = 26,
+	RS_E_MAX_ERROR = 27
 } rs_error;
 
 typedef struct {
@@ -65,15 +66,15 @@ typedef struct {
 } rs_errorInfo;
 
 typedef struct {
-	char* host;
+	char host[256];
 	unsigned short port;
 } rs_hostInfo;
 
 typedef struct {
-	rs_proxyType proxytype;
+	char username[256];
+	char password[256];
 	rs_hostInfo hostinfo;
-	char* username;
-	char* password;
+	rs_proxyType proxytype;
 } rs_proxy;
 
 typedef struct rocksock {
