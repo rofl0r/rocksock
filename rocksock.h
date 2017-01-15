@@ -54,7 +54,8 @@ typedef enum rs_error {
 	RS_E_REMOTE_DISCONNECTED = 24,
 	RS_E_NO_PROXYSTORAGE = 25,
 	RS_E_HOSTNAME_TOO_LONG = 26,
-	RS_E_MAX_ERROR = 27
+	RS_E_INVALID_PROXY_URL = 27,
+	RS_E_MAX_ERROR = 28
 } rs_error;
 
 typedef struct {
@@ -103,6 +104,7 @@ void rocksock_free_ssl(void);
 int rocksock_init(rocksock* sock, rs_proxy *proxies);
 int rocksock_set_timeout(rocksock* sock, unsigned long timeout_millisec);
 int rocksock_add_proxy(rocksock* sock, rs_proxyType proxytype, const char* host, unsigned short port, const char* username, const char* password);
+int rocksock_add_proxy_fromstring(rocksock* sock, const char *proxystring);
 int rocksock_connect(rocksock* sock, const char* host, unsigned short port, int useSSL);
 int rocksock_send(rocksock* sock, char* buffer, size_t bufsize, size_t chunksize, size_t* byteswritten);
 int rocksock_recv(rocksock* sock, char* buffer, size_t bufsize, size_t chunksize, size_t* bytesread);
@@ -142,6 +144,7 @@ void rocksock_free(rocksock* s);
 
 //RcB: DEP "rocksock.c"
 //RcB: DEP "rocksock_add_proxy.c"
+//RcB: DEP "rocksock_add_proxy_fromstring.c"
 //RcB: DEP "rocksock_error.c"
 //RcB: DEP "rocksock_strerror.c"
 //RcB: DEP "rocksock_strerror_type.c"
