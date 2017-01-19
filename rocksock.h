@@ -93,10 +93,8 @@ typedef struct rocksock {
 extern "C" {
 #endif
 
-#if 1 /* only available if USE_SSL was activated at build time */
 void rocksock_init_ssl(void);
 void rocksock_free_ssl(void);
-#endif
 
 /* all rocksock functions that return int return 0 on success or an errornumber on failure */
 /* rocksock_init: pass empty rocksock struct and if you want to use proxies,
