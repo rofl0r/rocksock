@@ -64,7 +64,7 @@ clean:
 
 examples/micserver.out: LDFLAGS+=-lasound
 
-%.out: %.c
+%.out: %.c $(ANAME)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(INC) -o $@ $< -L. -lrocksock $(LDFLAGS)
 
 
