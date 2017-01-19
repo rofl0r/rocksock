@@ -127,8 +127,8 @@ add_config "includedir = $includedir"
 add_config "sysconfdir = $sysconfdir"
 
 add_config "CC ?= $CC"
-[ -z "$CPPFLAGS" ] || add_config "CPPFLAGS ?= $CPPFLAGS"
-[ -z "$CFLAGS" ] ||   add_config "CFLAGS ?= $CFLAGS"
+[ -z "$CPPFLAGS" ] || add_config "CPPFLAGS += $CPPFLAGS"
+[ -z "$CFLAGS" ] ||   add_cflags "$CFLAGS"
 
 for lib in $libs ; do add_lib "$lib" ; done
 
