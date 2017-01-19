@@ -279,192 +279,192 @@ int rocksock_connect(rocksock* sock, const char* host, unsigned short port, int 
 	ret = do_connect(sock, &stor, sock->timeout);
 	if(ret) goto check_proxy0_failure;
 
-	if(sock->lastproxy >= 0) {
-		dummy.hostinfo = targethost;
-		dummy.password[0] = 0;
-		dummy.username[0] = 0;
-		dummy.proxytype = RS_PT_NONE;
-		for(px = 0; px <= sock->lastproxy; px++) {
-			if(px == sock->lastproxy)
-				targetproxy = &dummy;
-			else
-				targetproxy = &sock->proxies[px + 1];
-			// send socks connection data
-			switch(sock->proxies[px].proxytype) {
-				case RS_PT_SOCKS4:
-					trysocksv4a = 1;
-					trysocks4:
-					ret = rocksock_setup_socks4_header(sock, trysocksv4a, socksdata, targetproxy, &socksused);
-					if(ret) {
-						proxyfailure:
-						sock->lasterror.failedProxy = px;
-						return ret;
-					}
-					ret = rocksock_send(sock, socksdata, socksused, 0, &bytes);
-					if(ret) goto proxyfailure;
-					ret = rocksock_recv(sock, socksdata, 8, 8, &bytes);
-					if(ret) goto proxyfailure;
-					if(bytes < 8 || socksdata[0] != 0) {
-						ret = MKOERR(sock, RS_E_PROXY_UNEXPECTED_RESPONSE);
+	for(px = 0; px <= sock->lastproxy; px++) {
+		if(px == sock->lastproxy) {
+			targetproxy = &dummy;
+			dummy.hostinfo = targethost;
+			dummy.password[0] = 0;
+			dummy.username[0] = 0;
+			dummy.proxytype = RS_PT_NONE;
+		} else {
+			targetproxy = &sock->proxies[px + 1];
+		}
+		// send socks connection data
+		switch(sock->proxies[px].proxytype) {
+			case RS_PT_SOCKS4:
+				trysocksv4a = 1;
+				trysocks4:
+				ret = rocksock_setup_socks4_header(sock, trysocksv4a, socksdata, targetproxy, &socksused);
+				if(ret) {
+					proxyfailure:
+					sock->lasterror.failedProxy = px;
+					return ret;
+				}
+				ret = rocksock_send(sock, socksdata, socksused, 0, &bytes);
+				if(ret) goto proxyfailure;
+				ret = rocksock_recv(sock, socksdata, 8, 8, &bytes);
+				if(ret) goto proxyfailure;
+				if(bytes < 8 || socksdata[0] != 0) {
+					ret = MKOERR(sock, RS_E_PROXY_UNEXPECTED_RESPONSE);
+					goto proxyfailure;
+				}
+				switch(socksdata[1]) {
+					case 0x5a:
+						break;
+					case 0x5b:
+						if(trysocksv4a) {
+							trysocksv4a = 0;
+							goto trysocks4;
+						}
+						ret = MKOERR(sock, RS_E_TARGETPROXY_CONNECT_FAILED);
 						goto proxyfailure;
-					}
-					switch(socksdata[1]) {
-						case 0x5a:
-							break;
-						case 0x5b:
-							if(trysocksv4a) {
-								trysocksv4a = 0;
-								goto trysocks4;
-							}
-							ret = MKOERR(sock, RS_E_TARGETPROXY_CONNECT_FAILED);
-							goto proxyfailure;
-						case 0x5c: case 0x5d:
-							ret = MKOERR(sock, RS_E_PROXY_AUTH_FAILED);
-							goto proxyfailure;
-						default:
-							ret = MKOERR(sock, RS_E_PROXY_UNEXPECTED_RESPONSE);
-							goto proxyfailure;
-					}
-					break;
-				case RS_PT_SOCKS5:
-					p = socksdata;
-					*p++ = 5;
-					if(sock->proxies[px].username[0] && sock->proxies[px].password[0]) {
-						*p++ = 2;
-						*p++ = 0;
-						*p++ = 2;
-					} else {
-						*p++ = 1;
-						*p++ = 0;
-					}
-					bytes = p - socksdata;
-					ret = rocksock_send(sock, socksdata, bytes, bytes, &bytes);
-					if(ret) goto proxyfailure;
-					ret = rocksock_recv(sock, socksdata, 2, 2, &bytes);
-					if(ret) goto proxyfailure;
-					if(bytes < 2 || socksdata[0] != 5) {
-							ret = MKOERR(sock, RS_E_PROXY_UNEXPECTED_RESPONSE);
-							goto proxyfailure;
-					}
-					if(socksdata[1] == '\xff') {
+					case 0x5c: case 0x5d:
 						ret = MKOERR(sock, RS_E_PROXY_AUTH_FAILED);
 						goto proxyfailure;
-					} else if (socksdata[1] == 2) {
-						if(sock->proxies[px].username[0] && sock->proxies[px].password[0]) {
-							/*
-							+----+------+----------+------+----------+
-							|VER | ULEN |  UNAME   | PLEN |  PASSWD  |
-							+----+------+----------+------+----------+
-							| 1  |  1   | 1 to 255 |  1   | 1 to 255 |
-							+----+------+----------+------+----------+
-							*/
-							p = socksdata;
-							*p++ = 1;
-							bytes = strlen(sock->proxies[px].username);
-							*p++ = bytes;
-							memcpy(p, sock->proxies[px].username, bytes);
-							p += bytes;
-							bytes = strlen(sock->proxies[px].password);
-							*p++ = bytes;
-							memcpy(p, sock->proxies[px].password, bytes);
-							p += bytes;
-							bytes = p - socksdata;
-							ret = rocksock_send(sock, socksdata, bytes, bytes, &bytes);
-							if(ret) goto proxyfailure;
-							ret = rocksock_recv(sock, socksdata, 2, 2, &bytes);
-							if(ret) goto proxyfailure;
-							if(bytes < 2) {
-									ret = MKOERR(sock, RS_E_PROXY_UNEXPECTED_RESPONSE);
-									goto proxyfailure;
-							} else if(socksdata[1] != 0) {
-								ret = MKOERR(sock, RS_E_PROXY_AUTH_FAILED);
+					default:
+						ret = MKOERR(sock, RS_E_PROXY_UNEXPECTED_RESPONSE);
+						goto proxyfailure;
+				}
+				break;
+			case RS_PT_SOCKS5:
+				p = socksdata;
+				*p++ = 5;
+				if(sock->proxies[px].username[0] && sock->proxies[px].password[0]) {
+					*p++ = 2;
+					*p++ = 0;
+					*p++ = 2;
+				} else {
+					*p++ = 1;
+					*p++ = 0;
+				}
+				bytes = p - socksdata;
+				ret = rocksock_send(sock, socksdata, bytes, bytes, &bytes);
+				if(ret) goto proxyfailure;
+				ret = rocksock_recv(sock, socksdata, 2, 2, &bytes);
+				if(ret) goto proxyfailure;
+				if(bytes < 2 || socksdata[0] != 5) {
+						ret = MKOERR(sock, RS_E_PROXY_UNEXPECTED_RESPONSE);
+						goto proxyfailure;
+				}
+				if(socksdata[1] == '\xff') {
+					ret = MKOERR(sock, RS_E_PROXY_AUTH_FAILED);
+					goto proxyfailure;
+				} else if (socksdata[1] == 2) {
+					if(sock->proxies[px].username[0] && sock->proxies[px].password[0]) {
+						/*
+						+----+------+----------+------+----------+
+						|VER | ULEN |  UNAME   | PLEN |  PASSWD  |
+						+----+------+----------+------+----------+
+						| 1  |  1   | 1 to 255 |  1   | 1 to 255 |
+						+----+------+----------+------+----------+
+						*/
+						p = socksdata;
+						*p++ = 1;
+						bytes = strlen(sock->proxies[px].username);
+						*p++ = bytes;
+						memcpy(p, sock->proxies[px].username, bytes);
+						p += bytes;
+						bytes = strlen(sock->proxies[px].password);
+						*p++ = bytes;
+						memcpy(p, sock->proxies[px].password, bytes);
+						p += bytes;
+						bytes = p - socksdata;
+						ret = rocksock_send(sock, socksdata, bytes, bytes, &bytes);
+						if(ret) goto proxyfailure;
+						ret = rocksock_recv(sock, socksdata, 2, 2, &bytes);
+						if(ret) goto proxyfailure;
+						if(bytes < 2) {
+								ret = MKOERR(sock, RS_E_PROXY_UNEXPECTED_RESPONSE);
 								goto proxyfailure;
-							}
-						} else {
+						} else if(socksdata[1] != 0) {
 							ret = MKOERR(sock, RS_E_PROXY_AUTH_FAILED);
 							goto proxyfailure;
 						}
-					}
-					p = socksdata;
-					*p++ = 5;
-					*p++ = 1;
-					*p++ = 0;
-					if(isnumericipv4(targetproxy->hostinfo.host)) {
-						*p++ = 1; // ipv4 method
-						bytes = 4;
-						ipv4fromstring(targetproxy->hostinfo.host, (unsigned char*) p);
 					} else {
-						*p++ = 3; //hostname method, requires the server to do dns lookups.
-						bytes = strlen(targetproxy->hostinfo.host);
-						if(bytes > 255)
-							return MKOERR(sock, RS_E_SOCKS5_AUTH_EXCEEDSIZE);
-						*p++ = bytes;
-						memcpy(p, targetproxy->hostinfo.host, bytes);
+						ret = MKOERR(sock, RS_E_PROXY_AUTH_FAILED);
+						goto proxyfailure;
 					}
-					p+=bytes;
-					*p++ = targetproxy->hostinfo.port / 256;
-					*p++ = targetproxy->hostinfo.port % 256;
-					bytes = p - socksdata;
-					ret = rocksock_send(sock, socksdata, bytes, bytes, &bytes);
-					if(ret) goto proxyfailure;
-					ret = rocksock_recv(sock, socksdata, sizeof(socksdata), sizeof(socksdata), &bytes);
-					if(ret) goto proxyfailure;
-					if(bytes < 2) {
-							ret = MKOERR(sock, RS_E_PROXY_UNEXPECTED_RESPONSE);
-							goto proxyfailure;
-					}
-					switch(socksdata[1]) {
-						case 0:
-							break;
-						case 1:
-							ret = MKOERR(sock, RS_E_PROXY_GENERAL_FAILURE);
-							goto proxyfailure;
-						case 2:
-							ret = MKOERR(sock, RS_E_PROXY_AUTH_FAILED);
-							goto proxyfailure;
-						case 3:
-							ret = MKOERR(sock, RS_E_TARGETPROXY_NET_UNREACHABLE);
-							goto proxyfailure;
-						case 4:
-							ret = MKOERR(sock, RS_E_TARGETPROXY_HOST_UNREACHABLE);
-							goto proxyfailure;
-						case 5:
-							ret = MKOERR(sock, RS_E_TARGETPROXY_CONN_REFUSED);
-							goto proxyfailure;
-						case 6:
-							ret = MKOERR(sock, RS_E_TARGETPROXY_TTL_EXPIRED);
-							goto proxyfailure;
-						case 7:
-							ret = MKOERR(sock, RS_E_PROXY_COMMAND_NOT_SUPPORTED);
-							goto proxyfailure;
-						case 8:
-							ret = MKOERR(sock, RS_E_PROXY_ADDRESSTYPE_NOT_SUPPORTED);
-							goto proxyfailure;
-						default:
-							ret = MKOERR(sock, RS_E_PROXY_UNEXPECTED_RESPONSE);
-							goto proxyfailure;
-					}
-					break;
-				case RS_PT_HTTP:
-					bytes = snprintf(socksdata, sizeof(socksdata), "CONNECT %s:%d HTTP/1.1\r\n\r\n", targetproxy->hostinfo.host, targetproxy->hostinfo.port);
-					ret = rocksock_send(sock, socksdata, bytes, bytes, &bytes);
-					if(ret) goto proxyfailure;
-					ret = rocksock_recv(sock, socksdata, sizeof(socksdata), sizeof(socksdata), &bytes);
-					if(ret) goto proxyfailure;
-					if(bytes < 12) {
-							ret = MKOERR(sock, RS_E_PROXY_UNEXPECTED_RESPONSE);
-							goto proxyfailure;
-					}
-					if(socksdata[9] != '2') {
-							ret = MKOERR(sock, RS_E_TARGETPROXY_CONNECT_FAILED);
-							goto proxyfailure;
-					}
-					break;
-				default:
-					break;
-			}
+				}
+				p = socksdata;
+				*p++ = 5;
+				*p++ = 1;
+				*p++ = 0;
+				if(isnumericipv4(targetproxy->hostinfo.host)) {
+					*p++ = 1; // ipv4 method
+					bytes = 4;
+					ipv4fromstring(targetproxy->hostinfo.host, (unsigned char*) p);
+				} else {
+					*p++ = 3; //hostname method, requires the server to do dns lookups.
+					bytes = strlen(targetproxy->hostinfo.host);
+					if(bytes > 255)
+						return MKOERR(sock, RS_E_SOCKS5_AUTH_EXCEEDSIZE);
+					*p++ = bytes;
+					memcpy(p, targetproxy->hostinfo.host, bytes);
+				}
+				p+=bytes;
+				*p++ = targetproxy->hostinfo.port / 256;
+				*p++ = targetproxy->hostinfo.port % 256;
+				bytes = p - socksdata;
+				ret = rocksock_send(sock, socksdata, bytes, bytes, &bytes);
+				if(ret) goto proxyfailure;
+				ret = rocksock_recv(sock, socksdata, sizeof(socksdata), sizeof(socksdata), &bytes);
+				if(ret) goto proxyfailure;
+				if(bytes < 2) {
+					ret = MKOERR(sock, RS_E_PROXY_UNEXPECTED_RESPONSE);
+					goto proxyfailure;
+				}
+				switch(socksdata[1]) {
+					case 0:
+						break;
+					case 1:
+						ret = MKOERR(sock, RS_E_PROXY_GENERAL_FAILURE);
+						goto proxyfailure;
+					case 2:
+						ret = MKOERR(sock, RS_E_PROXY_AUTH_FAILED);
+						goto proxyfailure;
+					case 3:
+						ret = MKOERR(sock, RS_E_TARGETPROXY_NET_UNREACHABLE);
+						goto proxyfailure;
+					case 4:
+						ret = MKOERR(sock, RS_E_TARGETPROXY_HOST_UNREACHABLE);
+						goto proxyfailure;
+					case 5:
+						ret = MKOERR(sock, RS_E_TARGETPROXY_CONN_REFUSED);
+						goto proxyfailure;
+					case 6:
+						ret = MKOERR(sock, RS_E_TARGETPROXY_TTL_EXPIRED);
+						goto proxyfailure;
+					case 7:
+						ret = MKOERR(sock, RS_E_PROXY_COMMAND_NOT_SUPPORTED);
+						goto proxyfailure;
+					case 8:
+						ret = MKOERR(sock, RS_E_PROXY_ADDRESSTYPE_NOT_SUPPORTED);
+						goto proxyfailure;
+					default:
+						ret = MKOERR(sock, RS_E_PROXY_UNEXPECTED_RESPONSE);
+						goto proxyfailure;
+				}
+				break;
+			case RS_PT_HTTP:
+				bytes = snprintf(socksdata, sizeof(socksdata), "CONNECT %s:%d HTTP/1.1\r\n\r\n", targetproxy->hostinfo.host, targetproxy->hostinfo.port);
+				ret = rocksock_send(sock, socksdata, bytes, bytes, &bytes);
+				if(ret) goto proxyfailure;
+				ret = rocksock_recv(sock, socksdata, sizeof(socksdata), sizeof(socksdata), &bytes);
+				if(ret) goto proxyfailure;
+				if(bytes < 12) {
+					ret = MKOERR(sock, RS_E_PROXY_UNEXPECTED_RESPONSE);
+					goto proxyfailure;
+				}
+				if(socksdata[9] != '2') {
+					ret = MKOERR(sock, RS_E_TARGETPROXY_CONNECT_FAILED);
+					goto proxyfailure;
+				}
+				break;
+			default:
+				break;
 		}
 	}
+
 #ifdef USE_SSL
 	if(useSSL) {
 		ret = rocksock_ssl_connect_fd(sock);
