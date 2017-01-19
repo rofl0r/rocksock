@@ -305,6 +305,7 @@ int rocksock_connect(rocksock* sock, const char* host, unsigned short port, int 
 				ret = rocksock_recv(sock, socksdata, 8, 8, &bytes);
 				if(ret) goto proxyfailure;
 				if(bytes < 8 || socksdata[0] != 0) {
+					err_unexpected:
 					ret = MKOERR(sock, RS_E_PROXY_UNEXPECTED_RESPONSE);
 					goto proxyfailure;
 				}
@@ -322,8 +323,7 @@ int rocksock_connect(rocksock* sock, const char* host, unsigned short port, int 
 						ret = MKOERR(sock, RS_E_PROXY_AUTH_FAILED);
 						goto proxyfailure;
 					default:
-						ret = MKOERR(sock, RS_E_PROXY_UNEXPECTED_RESPONSE);
-						goto proxyfailure;
+						goto err_unexpected;
 				}
 				break;
 			case RS_PT_SOCKS5:
@@ -342,10 +342,7 @@ int rocksock_connect(rocksock* sock, const char* host, unsigned short port, int 
 				if(ret) goto proxyfailure;
 				ret = rocksock_recv(sock, socksdata, 2, 2, &bytes);
 				if(ret) goto proxyfailure;
-				if(bytes < 2 || socksdata[0] != 5) {
-						ret = MKOERR(sock, RS_E_PROXY_UNEXPECTED_RESPONSE);
-						goto proxyfailure;
-				}
+				if(bytes < 2 || socksdata[0] != 5) goto err_unexpected;
 				if(socksdata[1] == '\xff') {
 					ret = MKOERR(sock, RS_E_PROXY_AUTH_FAILED);
 					goto proxyfailure;
@@ -374,8 +371,7 @@ int rocksock_connect(rocksock* sock, const char* host, unsigned short port, int 
 						ret = rocksock_recv(sock, socksdata, 2, 2, &bytes);
 						if(ret) goto proxyfailure;
 						if(bytes < 2) {
-								ret = MKOERR(sock, RS_E_PROXY_UNEXPECTED_RESPONSE);
-								goto proxyfailure;
+							goto err_unexpected;
 						} else if(socksdata[1] != 0) {
 							ret = MKOERR(sock, RS_E_PROXY_AUTH_FAILED);
 							goto proxyfailure;
@@ -409,10 +405,7 @@ int rocksock_connect(rocksock* sock, const char* host, unsigned short port, int 
 				if(ret) goto proxyfailure;
 				ret = rocksock_recv(sock, socksdata, sizeof(socksdata), sizeof(socksdata), &bytes);
 				if(ret) goto proxyfailure;
-				if(bytes < 2) {
-					ret = MKOERR(sock, RS_E_PROXY_UNEXPECTED_RESPONSE);
-					goto proxyfailure;
-				}
+				if(bytes < 2) goto err_unexpected;
 				switch(socksdata[1]) {
 					case 0:
 						break;
@@ -441,8 +434,7 @@ int rocksock_connect(rocksock* sock, const char* host, unsigned short port, int 
 						ret = MKOERR(sock, RS_E_PROXY_ADDRESSTYPE_NOT_SUPPORTED);
 						goto proxyfailure;
 					default:
-						ret = MKOERR(sock, RS_E_PROXY_UNEXPECTED_RESPONSE);
-						goto proxyfailure;
+						goto err_unexpected;
 				}
 				break;
 			case RS_PT_HTTP:
@@ -451,10 +443,7 @@ int rocksock_connect(rocksock* sock, const char* host, unsigned short port, int 
 				if(ret) goto proxyfailure;
 				ret = rocksock_recv(sock, socksdata, sizeof(socksdata), sizeof(socksdata), &bytes);
 				if(ret) goto proxyfailure;
-				if(bytes < 12) {
-					ret = MKOERR(sock, RS_E_PROXY_UNEXPECTED_RESPONSE);
-					goto proxyfailure;
-				}
+				if(bytes < 12) goto err_unexpected;
 				if(socksdata[9] != '2') {
 					ret = MKOERR(sock, RS_E_TARGETPROXY_CONNECT_FAILED);
 					goto proxyfailure;
