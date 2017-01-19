@@ -56,10 +56,10 @@ clean:
 	rm -f $(LOBJS)
 	rm -f $(EX_PROGS)
 
-%.o: %.c
+%.o: %.c config.mak
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(INC) -c -o $@ $<
 
-%.lo: %.c
+%.lo: %.c config.mak
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(PIC) $(INC) -c -o $@ $<
 
 examples/micserver.out: LDFLAGS+=-lasound
