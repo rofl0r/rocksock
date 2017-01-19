@@ -155,8 +155,11 @@ if [ "$ssl_lib" = auto ] ; then
 fi
 if [ ! "$ssl_lib" = no ] ; then
 	add_config "CFLAGS += -DUSE_SSL"
-	[ "$ssl_lib" = "openssl" ] && add_lib openssl "" "-lssl -lcrypto" && add_cflags "-DUSE_OPENSSL"
-	[ "$ssl_lib" = "cyassl" ] && add_lib wolfssl "" "-lwolfssl" && add_cflags "-DUSE_CYASSL"
+	case "$ssl_lib" in
+		openssl) add_lib openssl "" "-lssl -lcrypto" && add_cflags "-DUSE_OPENSSL" ;;
+		cyassl|wolfssl) add_lib wolfssl "" "-lwolfssl" && add_cflags "-DUSE_CYASSL" ;;
+		*) echo "error: unsupported --with-ssl option $ssl_lib" ; exit 1 ;;
+	esac
 fi
 [ "$disable_static" = 1 ] && add_config "ALL_LIBS =" && enable_shared=1
 [ "$enable_shared" = 1 ] && add_config "ALL_LIBS += librocksock.so"
