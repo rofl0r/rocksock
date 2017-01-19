@@ -320,6 +320,7 @@ int rocksock_connect(rocksock* sock, const char* host, unsigned short port, int 
 						ret = MKOERR(sock, RS_E_TARGETPROXY_CONNECT_FAILED);
 						goto proxyfailure;
 					case 0x5c: case 0x5d:
+						err_proxyauth:
 						ret = MKOERR(sock, RS_E_PROXY_AUTH_FAILED);
 						goto proxyfailure;
 					default:
@@ -344,8 +345,7 @@ int rocksock_connect(rocksock* sock, const char* host, unsigned short port, int 
 				if(ret) goto proxyfailure;
 				if(bytes < 2 || socksdata[0] != 5) goto err_unexpected;
 				if(socksdata[1] == '\xff') {
-					ret = MKOERR(sock, RS_E_PROXY_AUTH_FAILED);
-					goto proxyfailure;
+					goto err_proxyauth;
 				} else if (socksdata[1] == 2) {
 					if(sock->proxies[px].username[0] && sock->proxies[px].password[0]) {
 						/*
@@ -370,15 +370,10 @@ int rocksock_connect(rocksock* sock, const char* host, unsigned short port, int 
 						if(ret) goto proxyfailure;
 						ret = rocksock_recv(sock, socksdata, 2, 2, &bytes);
 						if(ret) goto proxyfailure;
-						if(bytes < 2) {
-							goto err_unexpected;
-						} else if(socksdata[1] != 0) {
-							ret = MKOERR(sock, RS_E_PROXY_AUTH_FAILED);
-							goto proxyfailure;
-						}
+						if(bytes < 2) goto err_unexpected;
+						else if(socksdata[1] != 0) goto err_proxyauth;
 					} else {
-						ret = MKOERR(sock, RS_E_PROXY_AUTH_FAILED);
-						goto proxyfailure;
+						goto err_proxyauth;
 					}
 				}
 				p = socksdata;
@@ -413,8 +408,7 @@ int rocksock_connect(rocksock* sock, const char* host, unsigned short port, int 
 						ret = MKOERR(sock, RS_E_PROXY_GENERAL_FAILURE);
 						goto proxyfailure;
 					case 2:
-						ret = MKOERR(sock, RS_E_PROXY_AUTH_FAILED);
-						goto proxyfailure;
+						goto err_proxyauth;
 					case 3:
 						ret = MKOERR(sock, RS_E_TARGETPROXY_NET_UNREACHABLE);
 						goto proxyfailure;
