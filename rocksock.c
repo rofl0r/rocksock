@@ -200,7 +200,7 @@ static int do_connect(rocksock* sock, rs_resolveStorage* hostinfo, unsigned long
 	return rocksock_seterror(sock, RS_ET_SYS, errno, ROCKSOCK_FILENAME, __LINE__);
 }
 
-static int rocksock_setup_socks4_header(rocksock* sock, int is4a, char* buffer, size_t bufsize, rs_proxy* proxy, size_t* bytesused) {
+static int rocksock_setup_socks4_header(rocksock* sock, int is4a, char* buffer, rs_proxy* proxy, size_t* bytesused) {
 	int ret;
 	buffer[0] = 4;
 	buffer[1] = 1;
@@ -225,8 +225,13 @@ static int rocksock_setup_socks4_header(rocksock* sock, int is4a, char* buffer, 
 	}
 	buffer[8] = 0;
 	*bytesused = 9;
-	if(is4a) *bytesused += strlen(strncpy(buffer + *bytesused, proxy->hostinfo.host, bufsize - *bytesused))+1;
-
+	if(is4a) {
+		char *p = buffer + *bytesused;
+		size_t l = strlen(proxy->hostinfo.host) + 1;
+		/* memcpy is safe because all functions accepting a hostname check it's < 255 */
+		memcpy(p, proxy->hostinfo.host, l);
+		*bytesused += l;
+	}
 	return rocksock_seterror(sock, RS_ET_OWN, 0, NULL, 0);
 }
 
@@ -284,7 +289,7 @@ int rocksock_connect(rocksock* sock, const char* host, unsigned short port, int 
 				case RS_PT_SOCKS4:
 					trysocksv4a = 1;
 					trysocks4:
-					ret = rocksock_setup_socks4_header(sock, trysocksv4a, socksdata, sizeof(socksdata), targetproxy, &socksused);
+					ret = rocksock_setup_socks4_header(sock, trysocksv4a, socksdata, targetproxy, &socksused);
 					if(ret) {
 						proxyfailure:
 						sock->lasterror.failedProxy = px;
