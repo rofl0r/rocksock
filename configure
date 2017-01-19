@@ -162,6 +162,6 @@ fi
 [ "$enable_shared" = 1 ] && add_config "ALL_LIBS += librocksock.so"
 
 
-echo "hint: if you intend to build a static binary with minimal size, try NO_DNS_SUPPORT, NO_STRDUP in CFLAGS"
+echo "hint: if you intend to build a static binary with minimal size, try NO_DNS_SUPPORT in CFLAGS"
 echo "config.mak successfully created. now run make && make install"
 
