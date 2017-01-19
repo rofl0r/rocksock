@@ -97,10 +97,13 @@ int rocksock_seterror(rocksock* sock, rs_errorType errortype, int error, const c
 	sock->lasterror.failedProxy = -1;
 	return error;
 }
+
+#define MKOERR(S, X) rocksock_seterror(S, RS_ET_OWN, X, ROCKSOCK_FILENAME, __LINE__)
+
 //#define NO_DNS_SUPPORT
 static int rocksock_resolve_host(rocksock* sock, rs_hostInfo* hostinfo, rs_resolveStorage* result) {
 	if (!sock) return RS_E_NULL;
-	if (!hostinfo || !hostinfo->host[0] || !hostinfo->port) return rocksock_seterror(sock, RS_ET_OWN, RS_E_NULL, ROCKSOCK_FILENAME, __LINE__);;
+	if (!hostinfo || !hostinfo->host[0] || !hostinfo->port) return MKOERR(sock, RS_E_NULL);
 
 	result->hostaddr = &(result->hostaddr_buf);
 
@@ -195,7 +198,7 @@ static int do_connect(rocksock* sock, rs_resolveStorage* hostinfo, unsigned long
 		if(ret == -1) return rocksock_seterror(sock, RS_ET_SYS, errno, ROCKSOCK_FILENAME, __LINE__);
 		else if(optval) return rocksock_seterror(sock, RS_ET_SYS, optval, ROCKSOCK_FILENAME, __LINE__);
 		return 0;
-	} else if(ret == 0) return rocksock_seterror(sock, RS_ET_OWN, RS_E_HIT_CONNECTTIMEOUT, ROCKSOCK_FILENAME, __LINE__);
+	} else if(ret == 0) return MKOERR(sock, RS_E_HIT_CONNECTTIMEOUT);
 
 	return rocksock_seterror(sock, RS_ET_SYS, errno, ROCKSOCK_FILENAME, __LINE__);
 }
@@ -217,7 +220,7 @@ static int rocksock_setup_socks4_header(rocksock* sock, int is4a, char* buffer, 
 		ret = rocksock_resolve_host(sock, &proxy->hostinfo, &stor);
 		if(ret) return ret;
 		if(stor.hostaddr->ai_family != AF_INET)
-			return rocksock_seterror(sock, RS_ET_OWN, RS_E_SOCKS4_NO_IP6, ROCKSOCK_FILENAME, __LINE__);
+			return MKOERR(sock, RS_E_SOCKS4_NO_IP6);
 		buffer[4] = ((char*) &(((struct sockaddr_in*) stor.hostaddr->ai_addr)->sin_addr.s_addr))[0];
 		buffer[5] = ((char*) &(((struct sockaddr_in*) stor.hostaddr->ai_addr)->sin_addr.s_addr))[1];
 		buffer[6] = ((char*) &(((struct sockaddr_in*) stor.hostaddr->ai_addr)->sin_addr.s_addr))[2];
@@ -247,12 +250,12 @@ int rocksock_connect(rocksock* sock, const char* host, unsigned short port, int 
 	size_t socksused = 0, bytes;
 	if (!sock) return RS_E_NULL;
 	if (!host || !port)
-		return rocksock_seterror(sock, RS_ET_OWN, RS_E_NULL, ROCKSOCK_FILENAME, __LINE__);
+		return MKOERR(sock, RS_E_NULL);
 	size_t hl = strlen(host);
 	if(hl > 255)
-		return rocksock_seterror(sock, RS_ET_OWN, RS_E_HOSTNAME_TOO_LONG, ROCKSOCK_FILENAME, __LINE__);
+		return MKOERR(sock, RS_E_HOSTNAME_TOO_LONG);
 #ifndef USE_SSL
-	if (useSSL) return rocksock_seterror(sock, RS_ET_OWN, RS_E_NO_SSL, ROCKSOCK_FILENAME, __LINE__);
+	if (useSSL) return MKOERR(sock, RS_E_NO_SSL);
 #endif
 	memcpy(targethost.host, host, hl+1);
 	targethost.port = port;
@@ -300,7 +303,7 @@ int rocksock_connect(rocksock* sock, const char* host, unsigned short port, int 
 					ret = rocksock_recv(sock, socksdata, 8, 8, &bytes);
 					if(ret) goto proxyfailure;
 					if(bytes < 8 || socksdata[0] != 0) {
-						ret = rocksock_seterror(sock, RS_ET_OWN, RS_E_PROXY_UNEXPECTED_RESPONSE, ROCKSOCK_FILENAME, __LINE__);
+						ret = MKOERR(sock, RS_E_PROXY_UNEXPECTED_RESPONSE);
 						goto proxyfailure;
 					}
 					switch(socksdata[1]) {
@@ -311,13 +314,13 @@ int rocksock_connect(rocksock* sock, const char* host, unsigned short port, int 
 								trysocksv4a = 0;
 								goto trysocks4;
 							}
-							ret = rocksock_seterror(sock, RS_ET_OWN, RS_E_TARGETPROXY_CONNECT_FAILED, ROCKSOCK_FILENAME, __LINE__);
+							ret = MKOERR(sock, RS_E_TARGETPROXY_CONNECT_FAILED);
 							goto proxyfailure;
 						case 0x5c: case 0x5d:
-							ret = rocksock_seterror(sock, RS_ET_OWN, RS_E_PROXY_AUTH_FAILED, ROCKSOCK_FILENAME, __LINE__);
+							ret = MKOERR(sock, RS_E_PROXY_AUTH_FAILED);
 							goto proxyfailure;
 						default:
-							ret = rocksock_seterror(sock, RS_ET_OWN, RS_E_PROXY_UNEXPECTED_RESPONSE, ROCKSOCK_FILENAME, __LINE__);
+							ret = MKOERR(sock, RS_E_PROXY_UNEXPECTED_RESPONSE);
 							goto proxyfailure;
 					}
 					break;
@@ -338,11 +341,11 @@ int rocksock_connect(rocksock* sock, const char* host, unsigned short port, int 
 					ret = rocksock_recv(sock, socksdata, 2, 2, &bytes);
 					if(ret) goto proxyfailure;
 					if(bytes < 2 || socksdata[0] != 5) {
-							ret = rocksock_seterror(sock, RS_ET_OWN, RS_E_PROXY_UNEXPECTED_RESPONSE, ROCKSOCK_FILENAME, __LINE__);
+							ret = MKOERR(sock, RS_E_PROXY_UNEXPECTED_RESPONSE);
 							goto proxyfailure;
 					}
 					if(socksdata[1] == '\xff') {
-						ret = rocksock_seterror(sock, RS_ET_OWN, RS_E_PROXY_AUTH_FAILED, ROCKSOCK_FILENAME, __LINE__);
+						ret = MKOERR(sock, RS_E_PROXY_AUTH_FAILED);
 						goto proxyfailure;
 					} else if (socksdata[1] == 2) {
 						if(sock->proxies[px].username[0] && sock->proxies[px].password[0]) {
@@ -369,14 +372,14 @@ int rocksock_connect(rocksock* sock, const char* host, unsigned short port, int 
 							ret = rocksock_recv(sock, socksdata, 2, 2, &bytes);
 							if(ret) goto proxyfailure;
 							if(bytes < 2) {
-									ret = rocksock_seterror(sock, RS_ET_OWN, RS_E_PROXY_UNEXPECTED_RESPONSE, ROCKSOCK_FILENAME, __LINE__);
+									ret = MKOERR(sock, RS_E_PROXY_UNEXPECTED_RESPONSE);
 									goto proxyfailure;
 							} else if(socksdata[1] != 0) {
-								ret = rocksock_seterror(sock, RS_ET_OWN, RS_E_PROXY_AUTH_FAILED, ROCKSOCK_FILENAME, __LINE__);
+								ret = MKOERR(sock, RS_E_PROXY_AUTH_FAILED);
 								goto proxyfailure;
 							}
 						} else {
-							ret = rocksock_seterror(sock, RS_ET_OWN, RS_E_PROXY_AUTH_FAILED, ROCKSOCK_FILENAME, __LINE__);
+							ret = MKOERR(sock, RS_E_PROXY_AUTH_FAILED);
 							goto proxyfailure;
 						}
 					}
@@ -392,7 +395,7 @@ int rocksock_connect(rocksock* sock, const char* host, unsigned short port, int 
 						*p++ = 3; //hostname method, requires the server to do dns lookups.
 						bytes = strlen(targetproxy->hostinfo.host);
 						if(bytes > 255)
-							return rocksock_seterror(sock, RS_ET_OWN, RS_E_SOCKS5_AUTH_EXCEEDSIZE, ROCKSOCK_FILENAME, __LINE__);
+							return MKOERR(sock, RS_E_SOCKS5_AUTH_EXCEEDSIZE);
 						*p++ = bytes;
 						memcpy(p, targetproxy->hostinfo.host, bytes);
 					}
@@ -405,38 +408,38 @@ int rocksock_connect(rocksock* sock, const char* host, unsigned short port, int 
 					ret = rocksock_recv(sock, socksdata, sizeof(socksdata), sizeof(socksdata), &bytes);
 					if(ret) goto proxyfailure;
 					if(bytes < 2) {
-							ret = rocksock_seterror(sock, RS_ET_OWN, RS_E_PROXY_UNEXPECTED_RESPONSE, ROCKSOCK_FILENAME, __LINE__);
+							ret = MKOERR(sock, RS_E_PROXY_UNEXPECTED_RESPONSE);
 							goto proxyfailure;
 					}
 					switch(socksdata[1]) {
 						case 0:
 							break;
 						case 1:
-							ret = rocksock_seterror(sock, RS_ET_OWN, RS_E_PROXY_GENERAL_FAILURE, ROCKSOCK_FILENAME, __LINE__);
+							ret = MKOERR(sock, RS_E_PROXY_GENERAL_FAILURE);
 							goto proxyfailure;
 						case 2:
-							ret = rocksock_seterror(sock, RS_ET_OWN, RS_E_PROXY_AUTH_FAILED, ROCKSOCK_FILENAME, __LINE__);
+							ret = MKOERR(sock, RS_E_PROXY_AUTH_FAILED);
 							goto proxyfailure;
 						case 3:
-							ret = rocksock_seterror(sock, RS_ET_OWN, RS_E_TARGETPROXY_NET_UNREACHABLE, ROCKSOCK_FILENAME, __LINE__);
+							ret = MKOERR(sock, RS_E_TARGETPROXY_NET_UNREACHABLE);
 							goto proxyfailure;
 						case 4:
-							ret = rocksock_seterror(sock, RS_ET_OWN, RS_E_TARGETPROXY_HOST_UNREACHABLE, ROCKSOCK_FILENAME, __LINE__);
+							ret = MKOERR(sock, RS_E_TARGETPROXY_HOST_UNREACHABLE);
 							goto proxyfailure;
 						case 5:
-							ret = rocksock_seterror(sock, RS_ET_OWN, RS_E_TARGETPROXY_CONN_REFUSED, ROCKSOCK_FILENAME, __LINE__);
+							ret = MKOERR(sock, RS_E_TARGETPROXY_CONN_REFUSED);
 							goto proxyfailure;
 						case 6:
-							ret = rocksock_seterror(sock, RS_ET_OWN, RS_E_TARGETPROXY_TTL_EXPIRED, ROCKSOCK_FILENAME, __LINE__);
+							ret = MKOERR(sock, RS_E_TARGETPROXY_TTL_EXPIRED);
 							goto proxyfailure;
 						case 7:
-							ret = rocksock_seterror(sock, RS_ET_OWN, RS_E_PROXY_COMMAND_NOT_SUPPORTED, ROCKSOCK_FILENAME, __LINE__);
+							ret = MKOERR(sock, RS_E_PROXY_COMMAND_NOT_SUPPORTED);
 							goto proxyfailure;
 						case 8:
-							ret = rocksock_seterror(sock, RS_ET_OWN, RS_E_PROXY_ADDRESSTYPE_NOT_SUPPORTED, ROCKSOCK_FILENAME, __LINE__);
+							ret = MKOERR(sock, RS_E_PROXY_ADDRESSTYPE_NOT_SUPPORTED);
 							goto proxyfailure;
 						default:
-							ret = rocksock_seterror(sock, RS_ET_OWN, RS_E_PROXY_UNEXPECTED_RESPONSE, ROCKSOCK_FILENAME, __LINE__);
+							ret = MKOERR(sock, RS_E_PROXY_UNEXPECTED_RESPONSE);
 							goto proxyfailure;
 					}
 					break;
@@ -447,11 +450,11 @@ int rocksock_connect(rocksock* sock, const char* host, unsigned short port, int 
 					ret = rocksock_recv(sock, socksdata, sizeof(socksdata), sizeof(socksdata), &bytes);
 					if(ret) goto proxyfailure;
 					if(bytes < 12) {
-							ret = rocksock_seterror(sock, RS_ET_OWN, RS_E_PROXY_UNEXPECTED_RESPONSE, ROCKSOCK_FILENAME, __LINE__);
+							ret = MKOERR(sock, RS_E_PROXY_UNEXPECTED_RESPONSE);
 							goto proxyfailure;
 					}
 					if(socksdata[9] != '2') {
-							ret = rocksock_seterror(sock, RS_ET_OWN, RS_E_TARGETPROXY_CONNECT_FAILED, ROCKSOCK_FILENAME, __LINE__);
+							ret = MKOERR(sock, RS_E_TARGETPROXY_CONNECT_FAILED);
 							goto proxyfailure;
 					}
 					break;
@@ -476,7 +479,7 @@ typedef enum  {
 
 static int rocksock_operation(rocksock* sock, rs_operationType operation, char* buffer, size_t bufsize, size_t chunksize, size_t* bytes) {
 	if (!sock) return RS_E_NULL;
-	if (!buffer || !bytes || (!bufsize && operation == RS_OT_READ)) return rocksock_seterror(sock, RS_ET_OWN, RS_E_NULL, ROCKSOCK_FILENAME, __LINE__);
+	if (!buffer || !bytes || (!bufsize && operation == RS_OT_READ)) return MKOERR(sock, RS_E_NULL);
 	*bytes = 0;
 	struct timeval tv;
 	fd_set fd;
@@ -487,7 +490,7 @@ static int rocksock_operation(rocksock* sock, rs_operationType operation, char* 
 	size_t byteswanted;
 	char* bufptr = buffer;
 
-	if (sock->socket == -1) return rocksock_seterror(sock, RS_ET_OWN, RS_E_NO_SOCKET, ROCKSOCK_FILENAME, __LINE__);
+	if (sock->socket == -1) return MKOERR(sock, RS_E_NO_SOCKET);
 	if(operation == RS_OT_SEND) wfd = &fd;
 	else rfd = &fd;
 
@@ -514,12 +517,12 @@ static int rocksock_operation(rocksock* sock, rs_operationType operation, char* 
 		/* enforce the timeout by using select() before doing the actual recv/send */
 		FD_SET(sock->socket, &fd);
 		ret=select(sock->socket+1, rfd, wfd, NULL, sock->timeout ? make_timeval(&tv, sock->timeout) : NULL);
-		if(!FD_ISSET(sock->socket, &fd)) rocksock_seterror(sock, RS_ET_OWN, RS_E_NULL, ROCKSOCK_FILENAME, __LINE__); // temp test
+		if(!FD_ISSET(sock->socket, &fd)) MKOERR(sock, RS_E_NULL); // temp test
 		if(ret == -1) {
 			//printf("h: %s, skt: %d, to: %d:%d\n", targethost.host, sock->socket, tv.tv_sec, tv.tv_usec);
 			return rocksock_seterror(sock, RS_ET_SYS, errno, ROCKSOCK_FILENAME, __LINE__);
 		}
-		else if(!ret) return rocksock_seterror(sock, RS_ET_OWN, RS_OT_READ ? RS_E_HIT_READTIMEOUT : RS_E_HIT_WRITETIMEOUT, ROCKSOCK_FILENAME, __LINE__);
+		else if(!ret) return MKOERR(sock, RS_OT_READ ? RS_E_HIT_READTIMEOUT : RS_E_HIT_WRITETIMEOUT);
 
 		if(operation == RS_OT_SEND)
 			ret = send(sock->socket, bufptr, byteswanted, MSG_NOSIGNAL);
@@ -531,10 +534,10 @@ static int rocksock_operation(rocksock* sock, rs_operationType operation, char* 
 #endif
 
 		if(!ret) // The return value will be 0 when the peer has performed an orderly shutdown.
-			return rocksock_seterror(sock, RS_ET_OWN, RS_E_REMOTE_DISCONNECTED, ROCKSOCK_FILENAME, __LINE__);
+			return MKOERR(sock, RS_E_REMOTE_DISCONNECTED);
 		else if(ret == -1) {
 			ret = errno;
-			if(ret == EWOULDBLOCK || ret == EINPROGRESS) return rocksock_seterror(sock, RS_ET_OWN, RS_OT_READ ? RS_E_HIT_READTIMEOUT : RS_E_HIT_WRITETIMEOUT, ROCKSOCK_FILENAME, __LINE__);
+			if(ret == EWOULDBLOCK || ret == EINPROGRESS) return MKOERR(sock, RS_OT_READ ? RS_E_HIT_READTIMEOUT : RS_E_HIT_WRITETIMEOUT);
 			return rocksock_seterror(sock, RS_ET_SYS, errno, ROCKSOCK_FILENAME, __LINE__);
 		}
 
