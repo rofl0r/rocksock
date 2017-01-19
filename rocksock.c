@@ -99,6 +99,7 @@ int rocksock_seterror(rocksock* sock, rs_errorType errortype, int error, const c
 }
 
 #define MKOERR(S, X) rocksock_seterror(S, RS_ET_OWN, X, ROCKSOCK_FILENAME, __LINE__)
+#define NOERR(S) rocksock_seterror(S, RS_ET_OWN, 0, NULL, 0)
 
 //#define NO_DNS_SUPPORT
 static int rocksock_resolve_host(rocksock* sock, rs_hostInfo* hostinfo, rs_resolveStorage* result) {
@@ -144,7 +145,7 @@ static int rocksock_resolve_host(rocksock* sock, rs_hostInfo* hostinfo, rs_resol
 int rocksock_set_timeout(rocksock* sock, unsigned long timeout_millisec) {
 	if (!sock) return RS_E_NULL;
 	sock->timeout = timeout_millisec;
-	return rocksock_seterror(sock, RS_ET_OWN, 0, NULL, 0);
+	return NOERR(sock);
 }
 
 int rocksock_init(rocksock* sock, rs_proxy *proxies) {
@@ -154,7 +155,7 @@ int rocksock_init(rocksock* sock, rs_proxy *proxies) {
 	sock->timeout = 60*1000;
 	sock->socket = -1;
 	sock->proxies = proxies;
-	return rocksock_seterror(sock, RS_ET_OWN, 0, NULL, 0);
+	return NOERR(sock);
 }
 
 static struct timeval* make_timeval(struct timeval* tv, unsigned long timeout) {
@@ -235,7 +236,7 @@ static int rocksock_setup_socks4_header(rocksock* sock, int is4a, char* buffer, 
 		memcpy(p, proxy->hostinfo.host, l);
 		*bytesused += l;
 	}
-	return rocksock_seterror(sock, RS_ET_OWN, 0, NULL, 0);
+	return NOERR(sock);
 }
 
 int rocksock_connect(rocksock* sock, const char* host, unsigned short port, int useSSL) {
@@ -469,7 +470,7 @@ int rocksock_connect(rocksock* sock, const char* host, unsigned short port, int 
 		if(ret) return ret;
 	}
 #endif
-	return rocksock_seterror(sock, RS_ET_OWN, 0, NULL, 0);
+	return NOERR(sock);
 }
 
 typedef enum  {
@@ -511,7 +512,6 @@ static int rocksock_operation(rocksock* sock, rs_operationType operation, char* 
 				ret = rocksock_ssl_send(sock, bufptr, byteswanted);
 			else
 				ret = rocksock_ssl_recv(sock, bufptr, byteswanted);
-
 		} else {
 #endif
 		/* enforce the timeout by using select() before doing the actual recv/send */
@@ -546,7 +546,7 @@ static int rocksock_operation(rocksock* sock, rs_operationType operation, char* 
 		*bytes += ret;
 		if(operation == RS_OT_READ && (size_t) ret < byteswanted) break;
 	}
-	return rocksock_seterror(sock, RS_ET_OWN, 0, NULL, 0);
+	return NOERR(sock);
 }
 
 int rocksock_send(rocksock* sock, char* buffer, size_t bufsize, size_t chunksize, size_t* byteswritten) {
@@ -564,13 +564,13 @@ int rocksock_disconnect(rocksock* sock) {
 #endif
 	if(sock->socket != -1) close(sock->socket);
 	sock->socket = -1;
-	return rocksock_seterror(sock, RS_ET_OWN, 0, NULL, 0);
+	return NOERR(sock);
 }
 
 int rocksock_clear(rocksock* sock) {
 	if (!sock) return RS_E_NULL;
 	sock->lastproxy = -1;
 	sock->proxies = 0;
-	return rocksock_seterror(sock, RS_ET_OWN, 0, NULL, 0);
+	return NOERR(sock);
 }
 
