@@ -100,6 +100,7 @@ int rocksock_seterror(rocksock* sock, rs_errorType errortype, int error, const c
 
 #define MKOERR(S, X) rocksock_seterror(S, RS_ET_OWN, X, ROCKSOCK_FILENAME, __LINE__)
 #define NOERR(S) rocksock_seterror(S, RS_ET_OWN, 0, NULL, 0)
+#define MKSYSERR(S, X) rocksock_seterror(S, RS_ET_SYS, X, ROCKSOCK_FILENAME, __LINE__)
 
 //#define NO_DNS_SUPPORT
 static int rocksock_resolve_host(rocksock* sock, rs_hostInfo* hostinfo, rs_resolveStorage* result) {
@@ -173,21 +174,21 @@ static int do_connect(rocksock* sock, rs_resolveStorage* hostinfo, unsigned long
 	socklen_t optlen = sizeof(optval);
 
 	sock->socket = socket(hostinfo->hostaddr->ai_family, SOCK_STREAM | SOCK_CLOEXEC, 0);
-	if(sock->socket == -1) return rocksock_seterror(sock, RS_ET_SYS, errno, ROCKSOCK_FILENAME, __LINE__);
+	if(sock->socket == -1) return MKSYSERR(sock, errno);
 
 	/* the socket has to be made non-blocking temporarily so we can enforce a connect timeout */
 	flags = fcntl(sock->socket, F_GETFL);
-	if(flags == -1) return rocksock_seterror(sock, RS_ET_SYS, errno, ROCKSOCK_FILENAME, __LINE__);
+	if(flags == -1) return MKSYSERR(sock, errno);
 
 	if(fcntl(sock->socket, F_SETFL, flags | O_NONBLOCK) == -1) return errno;
 
 	ret = connect(sock->socket, hostinfo->hostaddr->ai_addr, hostinfo->hostaddr->ai_addrlen);
 	if(ret == -1) {
 		ret = errno;
-		if (!(ret == EINPROGRESS || ret == EWOULDBLOCK)) return rocksock_seterror(sock, RS_ET_SYS, ret, ROCKSOCK_FILENAME, __LINE__);
+		if (!(ret == EINPROGRESS || ret == EWOULDBLOCK)) return MKSYSERR(sock, ret);
 	}
 
-	if(fcntl(sock->socket, F_SETFL, flags) == -1) return rocksock_seterror(sock, RS_ET_SYS, errno, ROCKSOCK_FILENAME, __LINE__);
+	if(fcntl(sock->socket, F_SETFL, flags) == -1) return MKSYSERR(sock, errno);
 
 	FD_ZERO(&wset);
 	FD_SET(sock->socket, &wset);
@@ -196,12 +197,12 @@ static int do_connect(rocksock* sock, rs_resolveStorage* hostinfo, unsigned long
 
 	if(ret == 1 && FD_ISSET(sock->socket, &wset)) {
 		ret = getsockopt(sock->socket, SOL_SOCKET, SO_ERROR, &optval,&optlen);
-		if(ret == -1) return rocksock_seterror(sock, RS_ET_SYS, errno, ROCKSOCK_FILENAME, __LINE__);
-		else if(optval) return rocksock_seterror(sock, RS_ET_SYS, optval, ROCKSOCK_FILENAME, __LINE__);
+		if(ret == -1) return MKSYSERR(sock, errno);
+		else if(optval) return MKSYSERR(sock, optval);
 		return 0;
 	} else if(ret == 0) return MKOERR(sock, RS_E_HIT_CONNECTTIMEOUT);
 
-	return rocksock_seterror(sock, RS_ET_SYS, errno, ROCKSOCK_FILENAME, __LINE__);
+	return MKSYSERR(sock, errno);
 }
 
 static int rocksock_setup_socks4_header(rocksock* sock, int is4a, char* buffer, rs_proxy* proxy, size_t* bytesused) {
@@ -502,7 +503,7 @@ static int rocksock_operation(rocksock* sock, rs_operationType operation, char* 
 			ret = setsockopt(sock->socket, SOL_SOCKET, SO_RCVTIMEO, (void*) make_timeval(&tv, sock->timeout), sizeof(tv));
 	}
 
-	if (ret == -1) return rocksock_seterror(sock, RS_ET_SYS, errno, ROCKSOCK_FILENAME, __LINE__);
+	if (ret == -1) return MKSYSERR(sock, errno);
 
 	while(bytesleft) {
 		byteswanted = (chunksize && chunksize < bytesleft) ? chunksize : bytesleft;
@@ -520,7 +521,7 @@ static int rocksock_operation(rocksock* sock, rs_operationType operation, char* 
 		if(!FD_ISSET(sock->socket, &fd)) MKOERR(sock, RS_E_NULL); // temp test
 		if(ret == -1) {
 			//printf("h: %s, skt: %d, to: %d:%d\n", targethost.host, sock->socket, tv.tv_sec, tv.tv_usec);
-			return rocksock_seterror(sock, RS_ET_SYS, errno, ROCKSOCK_FILENAME, __LINE__);
+			return MKSYSERR(sock, errno);
 		}
 		else if(!ret) return MKOERR(sock, RS_OT_READ ? RS_E_HIT_READTIMEOUT : RS_E_HIT_WRITETIMEOUT);
 
@@ -538,7 +539,7 @@ static int rocksock_operation(rocksock* sock, rs_operationType operation, char* 
 		else if(ret == -1) {
 			ret = errno;
 			if(ret == EWOULDBLOCK || ret == EINPROGRESS) return MKOERR(sock, RS_OT_READ ? RS_E_HIT_READTIMEOUT : RS_E_HIT_WRITETIMEOUT);
-			return rocksock_seterror(sock, RS_ET_SYS, errno, ROCKSOCK_FILENAME, __LINE__);
+			return MKSYSERR(sock, errno);
 		}
 
 		bytesleft -= ret;
