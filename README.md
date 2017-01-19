@@ -28,11 +28,11 @@ SOCKS/HTTP proxy support is built-in as well.
   statically linked).
   of course once you build it with ssl support, ssl will definitely
   make use of malloc().
-  you need to add NO_STRDUP and NO_DNS_SUPPORT to your CFLAGS
-  so nothing that can call malloc gets pulled in, if you want a 
+  you need to add NO_DNS_SUPPORT to your CFLAGS
+  so nothing that can call malloc gets pulled in, if you want a
   minimal static binary (in that case you have to pass ipv4
   addresses in dotted notation).
-- optionally uses [libulz](https://github.com/rofl0r/libulz), 
+- optionally uses [libulz](https://github.com/rofl0r/libulz),
   a lightweight C library, featuring things like
   a snprintf replacement which doesnt include code for float
   handling.
