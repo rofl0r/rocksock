@@ -57,7 +57,7 @@ usage() {
 	echo "--libdir=/path		            default: $prefix/lib"
 	echo "--includedir=/path	            default: $prefix/include"
 	echo "--sysconfdir=/path	            default: $prefix/etc"
-	echo "--with-ssl=[auto,cyassl,openssl,no]   default: auto"
+	echo "--with-ssl=[auto,wolfssl,openssl,no]  default: auto"
 	echo "--disable-static                      default: no"
 	echo "--enable-shared                       default: no"
 	echo "--help : show this text"
@@ -148,7 +148,7 @@ trap 'rm "$tmpc"' EXIT INT QUIT TERM HUP
 
 if [ "$ssl_lib" = auto ] ; then
 	foo=
-	if trylink foo "-lcyassl" ; then ssl_lib=cyassl
+	if trylink foo "-lwolfssl" ; then ssl_lib=cyassl
 	elif trylink foo "-lssl" && trylink foo "-lcrypto" ; then ssl_lib=openssl
 	else ssl_lib=no
 	fi
@@ -156,7 +156,7 @@ fi
 if [ ! "$ssl_lib" = no ] ; then
 	add_config "CFLAGS += -DUSE_SSL"
 	[ "$ssl_lib" = "openssl" ] && add_lib openssl "" "-lssl -lcrypto" && add_cflags "-DUSE_OPENSSL"
-	[ "$ssl_lib" = "cyassl" ] && add_lib cyassl "" "-lcyassl" && add_cflags "-DUSE_CYASSL"
+	[ "$ssl_lib" = "cyassl" ] && add_lib wolfssl "" "-lwolfssl" && add_cflags "-DUSE_CYASSL"
 fi
 [ "$disable_static" = 1 ] && add_config "ALL_LIBS =" && enable_shared=1
 [ "$enable_shared" = 1 ] && add_config "ALL_LIBS += librocksock.so"
