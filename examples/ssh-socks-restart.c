@@ -51,24 +51,27 @@ EXTRA=-R 0.0.0.0:2222:127.0.0.1:22 -q -o StrictHostKeyChecking=no -o UserKnownHo
 #include <string.h>
 #include <signal.h>
 
+static int cfg_gotosection(FILE *f, const char* section, char *buf, size_t bufsize) {
+	size_t s = strlen(section);
+	while(fgets(buf, bufsize, f)) {
+		if(buf[0] == '[' && bufsize > s+2 && buf[1+s] == ']' && !strncmp(buf+1,section,s))
+			return 1;
+	}
+	return 0;
+}
+
 static char* cfg_getstr(FILE *f, const char* section, const char *key, char*  buf, size_t bufsize) {
 	fseek(f, 0, SEEK_SET);
-	size_t l = strlen(key), s = strlen(section);
-	int insect = 0;
+	if(!cfg_gotosection(f, section, buf, bufsize)) return 0;
+	size_t l = strlen(key);
 	while(fgets(buf, bufsize, f)) {
-		if(!insect && buf[0] == '[' && bufsize > s+2 && buf[1+s] == ']' && !strncmp(buf+1,section,s)) {
-			insect = 1;
-			continue;
-		}
-		if(insect) {
-			if(!strncmp(buf, key, l) && buf[l] == '=') {
-				size_t x = l;
-				while(buf[++x] != '\n');
-				buf[x] = 0;
-				memmove(buf, buf + l + 1, x - l);
-				return buf;
-			} else if(buf[0] == '[') break;
-		}
+		if(!strncmp(buf, key, l) && buf[l] == '=') {
+			size_t x = l;
+			while(buf[++x] != '\n');
+			buf[x] = 0;
+			memmove(buf, buf + l + 1, x - l);
+			return buf;
+		} else if(buf[0] == '[') break;
 	}
 	*buf = 0;
 	return 0;
