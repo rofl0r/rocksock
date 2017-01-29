@@ -42,6 +42,19 @@ EXTRA=-R 0.0.0.0:2222:127.0.0.1:22 -q -o StrictHostKeyChecking=no -o UserKnownHo
 	configuration item,
 	i.e. ./ssh-socks-restart my.conf server1
 
+[testhosts]
+google.com:443
+4.68.80.110:80
+msn.com
+15.48.80.55
+cnn.com
+18.9.49.46:80
+38.100.128.10:80
+
+	testhosts section contains a list of host:port tuples to connect to
+	to check if the socks connection is still up. i put some raw ips there
+	as well to mitigate problems with DNS.
+
 */
 #include "../rocksock.h"
 #include <sys/wait.h>
@@ -77,13 +90,44 @@ static char* cfg_getstr(FILE *f, const char* section, const char *key, char*  bu
 	return 0;
 }
 
+/* returns the number of elements in the list, 0 if none found, and
+   a the *negative* count of the elements read so far if the buf
+   was too small to read the entire section, or more than
+   100 elements would have been there. */
+static int cfg_getsection(FILE *f, const char* section, unsigned list_indices[static 100], char* buf, size_t bufsize) {
+	fseek(f, 0, SEEK_SET);
+	if(!cfg_gotosection(f, section, buf, bufsize)) return 0;
+	char *p = buf;
+	size_t left = bufsize;
+	unsigned elems = 0;
+	while(fgets(p, left, f)) {
+		char *q = strrchr(p, '\n');
+		if(!q) return -elems;
+		*q = 0;
+		if(p != q) {
+			list_indices[elems++]=p-buf;
+			if(p[0] == '[' && q[-1] == ']') return elems;
+			if(elems == 100) return -elems;
+		}
+		q++;
+		left -= q - p;
+		p = q;
+	}
+	return elems;
+}
+
 static char *try_cfg_getstr(FILE *f, const char* section, const char *key, char*  buf, size_t bufsize) {
 	char *p;
 	if((p = cfg_getstr(f, section, key, buf, bufsize))) return p;
 	else return cfg_getstr(f, "default", key, buf, bufsize);
 }
 
-static int read_config(const char* fn, char *section, char* key, char* login, char* port, char* socksif, char* extra) {
+struct testhosts_info {
+	char buf[4096];
+	unsigned count;
+	unsigned indices[100];
+};
+static int read_config(const char* fn, char *section, char* key, char* login, char* port, char* socksif, char* extra, struct testhosts_info* testhosts) {
 	printf("reading config...\n");
 	FILE* f;
 	if(!(f = fopen(fn, "r"))) {
@@ -102,6 +146,7 @@ static int read_config(const char* fn, char *section, char* key, char* login, ch
 	}
 	if(!try_cfg_getstr(f, section, "PORT", port, 128)) strcpy(port, "22");
 	try_cfg_getstr(f, section, "EXTRA", extra, 1024);
+	testhosts->count = abs(cfg_getsection(f, "testhosts", testhosts->indices, testhosts->buf, sizeof testhosts->buf));
 
 	fclose(f);
 	return 1;
@@ -174,7 +219,11 @@ int main(int argc, char**argv) {
 	signal(SIGINT, sighandler);
 	while(1) {
 		char key[128], login[128], port[128], socksif[128], extra[1024];
-		if(!read_config(argv[1], argv[2], key, login, port, socksif, extra)) return 1;
+		struct testhosts_info testhosts;
+		if(!read_config(argv[1], argv[2], key, login, port, socksif, extra, &testhosts)) {
+			dprintf(2, "error processing config\n");
+			return 1;
+		}
 		dprintf(2, "starting process...");
 		if(!(child = fork())) {
 			char**nargs=build_argv(key, login, port, socksif, extra);
@@ -213,19 +262,22 @@ int main(int argc, char**argv) {
 			char *p = strchr(socksbuf, ':');
 			*p = 0;
 			rocksock_add_proxy(r, RS_PT_SOCKS5, socksbuf, atoi(p+1), 0, 0);
-			static const char* testservers[] = {
-				"google.com",
-				"4.68.80.110" /*www.level3.net*/,
-				"msn.com",
-				"15.48.80.55"/*redirect.hp.com*/,
-				"cnn.com",
-				"18.7.27.14" /*libraries.mit.edu*/,
-				"38.100.128.10" /*www.psinet.com*/
-			};
-			static const unsigned srvcnt = sizeof(testservers) / sizeof(testservers[0]);
 			static unsigned srvno = 0;
-			dprintf(2, "connecting...\n");
-			ret = rocksock_connect(r, testservers[srvno++ % srvcnt], 80, 0);
+			if(srvno >= testhosts.count) {
+				if(!srvno) {
+					dprintf(2, "error: testhosts section missing or no testhosts specified\n");
+					return 1;
+				}
+				srvno = 0;
+			}
+
+			char hostnamebuf[524], *port;
+			snprintf(hostnamebuf, sizeof hostnamebuf, "%s", testhosts.buf+testhosts.indices[srvno++]);
+			port = strchr(hostnamebuf, ':');
+			if(!port) port = "80";
+			else *(port++) = 0;
+			dprintf(2, "connecting to %s...\n", hostnamebuf);
+			ret = rocksock_connect(r, hostnamebuf, atoi(port), 0);
 			rocksock_disconnect(r);
 			rocksock_clear(r);
 			if(ret) {
