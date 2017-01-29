@@ -19,7 +19,7 @@ int rocksock_ssl_pending(rocksock *sock);
 
 // skip openssl impl if USE_CYASSL was given.
 //RcB: SKIPON "USE_CYASSL"
-//RcB: DEP "rocksock_ssl.c"
+//RcB: DEP "rocksock_openssl.c"
 //RcB: SKIPOFF "USE_CYASSL"
 
 // skip cyassl impl if USE_CYASSL was not given.
