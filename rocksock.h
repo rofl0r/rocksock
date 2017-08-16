@@ -7,9 +7,15 @@
 #define _ROCKSOCK_H_
 
 #include <stddef.h>
+#ifndef  WIN32
 #include <netdb.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#else
+#include <stdio.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#endif // ! WIN32
 
 typedef enum {
 	RS_PT_NONE = 0,
@@ -116,6 +122,10 @@ const char* rocksock_strerror_type(rocksock *sock);
 
 enum rs_errorType rocksock_get_errortype(rocksock *sock);
 int rocksock_get_error(rocksock *sock);
+
+#ifdef WIN32
+#define dprintf fprintf
+#endif
 
 #define rocksock_error_dprintf(FD, RS) \
 	dprintf(FD, "%s:%d - %s error: %s from %s:%d\n", \

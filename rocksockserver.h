@@ -10,10 +10,15 @@
 
 #ifndef _ROCKSOCKSERVER_H_
 #define _ROCKSOCKSERVER_H_
-
+#ifndef WIN32
 #include <netdb.h>
 #include <sys/socket.h>
 #include <sys/select.h>
+#else
+#include <stdio.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#endif // !WIN32
 
 #if (! defined(USER_MAX_FD)) || (USER_MAX_FD > FD_SETSIZE)
 #undef USER_MAX_FD

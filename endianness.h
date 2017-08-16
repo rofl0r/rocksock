@@ -15,7 +15,10 @@
 #ifdef __linux
 #include <endian.h>
 #else
+#ifdef WIN32
+#else
 #include <machine/endian.h>
+#endif // WIN32
 #endif
 
 //#include <stdint.h>

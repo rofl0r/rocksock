@@ -8,16 +8,19 @@
  */
 
 #include <string.h>
-#include <netdb.h>
-#include <unistd.h>
 #include <stddef.h>
-#include <sys/socket.h>
-#include <sys/select.h>
-#include <netinet/in.h>
 #include <time.h>
 #include <errno.h>
 #include <limits.h>
 #include <stdlib.h>
+
+#ifndef WIN32
+#include <netdb.h>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <sys/select.h>
+#include <netinet/in.h>
+#endif // !WIN32
 
 #include "rocksockserver.h"
 
@@ -30,8 +33,15 @@
 #include "../lib/include/timelib.h"
 #else
 #include <stdio.h>
+#ifndef WIN32
 #include <arpa/inet.h>
 #define microsleep(X) usleep(X)
+#else
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#define microsleep(X) Sleep((X)/1000)
+#endif
+
 static inline char* my_intToString(int i, char *b, size_t s) {
 	int x = snprintf(b, s, "%d", i);
 	if(x > 0 && x < s) return b;
@@ -106,7 +116,11 @@ int rocksockserver_init(rocksockserver* srv, const char* listenip, unsigned shor
 		setsockopt(srv->listensocket, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
 
 		if (bind(srv->listensocket, p->ai_addr, p->ai_addrlen) < 0) {
+#ifdef WIN32
+			closesocket(srv->listensocket);
+#else
 			close(srv->listensocket);
+#endif
 			continue;
 		}
 
@@ -146,7 +160,11 @@ int rocksockserver_init(rocksockserver* srv, const char* listenip, unsigned shor
 int rocksockserver_disconnect_client(rocksockserver* srv, int client) {
 	if(client < 0 || client > USER_MAX_FD) return -1;
 	if(FD_ISSET(client, &srv->master)) {
+#ifdef WIN32
+		closesocket(client);
+#else
 		close(client);
+#endif
 		FD_CLR(client, &srv->master);
 		if(client == srv->maxfd)
 			srv->maxfd--;
@@ -255,8 +273,12 @@ int rocksockserver_loop(rocksockserver* srv,
 			if (newfd == -1) {
 				LOGP("accept");
 			} else {
-				if(newfd >= USER_MAX_FD)
+				if (newfd >= USER_MAX_FD)
+#ifdef WIN32
+					closesocket(newfd);
+#else
 					close(newfd); // only USER_MAX_FD connections can be handled.
+#endif
 				else {
 					FD_SET(newfd, &srv->master);
 					if (newfd > srv->maxfd)

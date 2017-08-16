@@ -9,8 +9,10 @@
 #define _GNU_SOURCE
 
 #include <stdio.h>
+#ifndef WIN32
 #include <sys/select.h>
 #include <netinet/in.h>
+#endif
 #include <errno.h>
 
 #include "rocksock.h"
@@ -29,7 +31,7 @@
    if data is available, and a subsequent recv call returns 0 bytes read, the
    connection was terminated. */
 int rocksock_peek(rocksock* sock, int *result) {
-	ssize_t readv;
+	size_t readv;
 	if(!result)
 		return rocksock_seterror(sock, RS_ET_OWN, RS_E_NULL, ROCKSOCK_FILENAME, __LINE__);
 	if (sock->socket == -1) return rocksock_seterror(sock, RS_ET_OWN, RS_E_NO_SOCKET, ROCKSOCK_FILENAME, __LINE__);

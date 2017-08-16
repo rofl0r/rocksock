@@ -16,13 +16,20 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <unistd.h>
 #include <fcntl.h>
+#ifndef WIN32
+#include <unistd.h>
 #include <sys/select.h>
 #include <netinet/in.h>
+#endif
+
 
 #ifndef SOCK_CLOEXEC
+#ifdef _MSC_VER
+#pragma message("compiling without SOCK_CLOEXEC support")
+#else
 #warning compiling without SOCK_CLOEXEC support
+#endif // _MSC_VER
 #define SOCK_CLOEXEC 0
 #endif
 
@@ -177,19 +184,28 @@ static int do_connect(rocksock* sock, rs_resolveStorage* hostinfo, unsigned long
 	if(sock->socket == -1) return MKSYSERR(sock, errno);
 
 	/* the socket has to be made non-blocking temporarily so we can enforce a connect timeout */
+#ifdef WIN32
+	flags = 1;
+	ret = ioctlsocket(sock->socket, FIONBIO, (u_long*)&flags);
+	if (0 != ret) return ret;
+#else
 	flags = fcntl(sock->socket, F_GETFL);
 	if(flags == -1) return MKSYSERR(sock, errno);
 
 	if(fcntl(sock->socket, F_SETFL, flags | O_NONBLOCK) == -1) return errno;
-
+#endif
 	ret = connect(sock->socket, hostinfo->hostaddr->ai_addr, hostinfo->hostaddr->ai_addrlen);
 	if(ret == -1) {
 		ret = errno;
 		if (!(ret == EINPROGRESS || ret == EWOULDBLOCK)) return MKSYSERR(sock, ret);
 	}
-
+#ifdef WIN32
+	flags = 0;
+	ret = ioctlsocket(sock->socket, FIONBIO, (u_long*)&flags);
+	if (0 != ret) return ret;
+#else
 	if(fcntl(sock->socket, F_SETFL, flags) == -1) return MKSYSERR(sock, errno);
-
+#endif
 	FD_ZERO(&wset);
 	FD_SET(sock->socket, &wset);
 
@@ -496,6 +512,7 @@ static int rocksock_operation(rocksock* sock, rs_operationType operation, char* 
 				ret = rocksock_ssl_recv(sock, bufptr, byteswanted);
 		} else {
 #endif
+		FD_ZERO(&fd);
 		/* enforce the timeout by using select() before doing the actual recv/send */
 		FD_SET(sock->socket, &fd);
 		ret=select(sock->socket+1, rfd, wfd, NULL, sock->timeout ? make_timeval(&tv, sock->timeout) : NULL);
@@ -544,7 +561,13 @@ int rocksock_disconnect(rocksock* sock) {
 #ifdef USE_SSL
 	rocksock_ssl_free_context(sock);
 #endif
-	if(sock->socket != -1) close(sock->socket);
+	if (sock->socket != -1) {
+#ifdef WIN32
+		closesocket(sock->socket);
+#else
+		close(sock->socket);
+#endif
+	}
 	sock->socket = -1;
 	return NOERR(sock);
 }

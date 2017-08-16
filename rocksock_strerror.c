@@ -2,7 +2,9 @@
 #include "rocksock_internal.h"
 #include <string.h>
 #ifndef NO_DNS_SUPPORT
+#ifndef WIN32
 #include <netdb.h>
+#endif
 #endif
 #ifdef USE_SSL
 #include "rocksock_ssl_internal.h"
