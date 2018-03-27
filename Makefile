@@ -17,7 +17,8 @@ SONAME = librocksock.so
 ANAME = librocksock.a
 
 #EX_SRCS = $(sort $(wildcard examples/*.c))
-EX_SRCS = examples/http_test.c examples/rocksock_test3.c
+EX_SRCS = examples/http_test.c examples/rocksock_test3.c \
+          examples/ssh-socks-restart.c examples/proxychk.c
 EX_PROGS = $(EX_SRCS:.c=.out)
 
 CFLAGS  += -Wall -std=c99 -D_GNU_SOURCE -pipe 
