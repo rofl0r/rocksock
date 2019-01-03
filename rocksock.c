@@ -272,7 +272,7 @@ int rocksock_connect(rocksock* sock, const char* host, unsigned short port, int 
 	ret = rocksock_resolve_host(sock, connector, &stor);
 	if(ret) {
 		check_proxy0_failure:
-		px = sock->lastproxy >= 0 ? 0 : -1;
+		px = -1;
 		goto proxyfailure;
 	}
 
@@ -297,7 +297,7 @@ int rocksock_connect(rocksock* sock, const char* host, unsigned short port, int 
 				ret = rocksock_setup_socks4_header(sock, trysocksv4a, socksdata, targetproxy, &socksused);
 				if(ret) {
 					proxyfailure:
-					sock->lasterror.failedProxy = px;
+					sock->lasterror.failedProxy = px == sock->lastproxy ? -1 : px + 1;
 					if(sock->socket != -1) {
 						close(sock->socket);
 						sock->socket = -1;
