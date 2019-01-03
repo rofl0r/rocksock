@@ -113,6 +113,8 @@ int rocksock_disconnect(rocksock* sock);
 const char* rocksock_strerror(rocksock *sock);
 /* return a string describing in which subsytem the last error happened, or NULL */
 const char* rocksock_strerror_type(rocksock *sock);
+/* return a string describing the last error, and which proxy caused it */
+char* rocksock_strerror_detailed(rocksock *sock, char *msgbuf, size_t buflen);
 
 enum rs_errorType rocksock_get_errortype(rocksock *sock);
 int rocksock_get_error(rocksock *sock);
@@ -146,6 +148,7 @@ void rocksock_free(rocksock* s);
 //RcB: DEP "rocksock_error.c"
 //RcB: DEP "rocksock_strerror.c"
 //RcB: DEP "rocksock_strerror_type.c"
+//RcB: DEP "rocksock_strerror_detailed.c"
 //RcB: DEP "rocksock_dynamic.c"
 //RcB: DEP "rocksock_readline.c"
 //RcB: DEP "rocksock_peek.c"
