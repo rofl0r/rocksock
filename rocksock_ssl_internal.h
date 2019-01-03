@@ -12,7 +12,9 @@ int rocksock_ssl_peek(rocksock* sock, int *result);
 int rocksock_ssl_pending(rocksock *sock);
 
 /* if you want cyassl, put both -DUSE_SSL and -DUSE_CYASSL
-   in your CFLAGS */
+   in your CFLAGS.
+   for openssl use -DUSE_SSL and -DUSE_OPENSSL.
+ */
 
 // skip the following, if USE_SSL is not given in CFLAGS
 //RcB: SKIPUON "USE_SSL"
