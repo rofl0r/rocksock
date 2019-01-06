@@ -180,7 +180,7 @@ static int do_connect(rocksock* sock, rs_resolveStorage* hostinfo, unsigned long
 	flags = fcntl(sock->socket, F_GETFL);
 	if(flags == -1) return MKSYSERR(sock, errno);
 
-	if(fcntl(sock->socket, F_SETFL, flags | O_NONBLOCK) == -1) return errno;
+	if(fcntl(sock->socket, F_SETFL, flags | O_NONBLOCK) == -1) return MKSYSERR(sock, errno);
 
 	ret = connect(sock->socket, hostinfo->hostaddr->ai_addr, hostinfo->hostaddr->ai_addrlen);
 	if(ret == -1) {
