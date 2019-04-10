@@ -13,7 +13,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "../rocksock.h"
-//RcB: DEP "../rocksock.c"
 
 #define chk(X, ACTION) if(X) { rocksock_error_dprintf(2, psock); ACTION; }
 #define checkerr chk(ret, exit(2))

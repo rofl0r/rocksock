@@ -1,8 +1,10 @@
 #include "../rocksock.h"
 #include "rsirc.h"
 #include <stdio.h>
-#ifdef USE_LIBULZ
+#ifdef USE_LIBULZ_SYS
 #include <ulz/stdio-repl.h>
+#elif defined(USE_LIBULZ)
+#include <stdio-repl.h>
 #endif
 #include <stdarg.h>
 #include <assert.h>

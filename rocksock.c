@@ -28,11 +28,16 @@
 
 #include "rocksock.h"
 #include "rocksock_internal.h"
-#ifdef USE_LIBULZ
-//RcB: SKIPUON "USE_LIBULZ"
+#ifdef USE_LIBULZ_SYS
+/* use this if you have installed libulz systemwide via make install */
 #include <ulz/strlib.h>
 #include <ulz/stdio-repl.h>
-//RcB: SKIPUOFF "USE_LIBULZ"
+#elif defined(USE_LIBULZ)
+/* use this if you want to use the extracted libulz sources via RcB2.
+   pass a -I flag pointing to its include dir, like so: -I ../lib/include
+   to RcB2 */
+#include <strlib.h>
+#include <stdio-repl.h>
 #else
 /* this version of ipv4fromstring was taken from libulz and tuned to be
    more pedantic than the libulz version, so it can be used for isnumericipv4()

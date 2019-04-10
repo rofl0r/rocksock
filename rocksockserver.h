@@ -46,7 +46,7 @@ int rocksockserver_loop(rocksockserver* srv,
 			int (*on_clientdisconnect) (void* userdata, int fd)
 );
 
-#endif
+#pragma RcB2 DEP "rocksockserver*.c"
 
-//RcB: DEP "rocksockserver*.c"
+#endif
 

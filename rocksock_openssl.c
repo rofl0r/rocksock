@@ -19,7 +19,7 @@
 #define ROCKSOCK_FILENAME __FILE__
 #endif
 
-//RcB: LINK "-lssl -lcrypto -lz"
+#pragma RcB2 LINK "-lssl" "-lcrypto" "-lz"
 
 void rocksock_init_ssl(void) {
 	SSL_library_init();

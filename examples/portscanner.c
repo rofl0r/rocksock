@@ -17,7 +17,7 @@
 #include <time.h>
 #include "../rocksock.h"
 
-//RcB: LINK "-lpthread"
+#pragma RcB2 LINK "-lpthread"
 
 typedef struct {
 	char host[16];

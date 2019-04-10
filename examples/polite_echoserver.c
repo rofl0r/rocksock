@@ -5,7 +5,7 @@
 #include "../../lib/include/sblist.h"
 #include <string.h>
 
-//RcB: CFLAGS "-std=c99"
+#pragma RcB2 CFLAGS "-std=c99"
 
 enum cstate {
 	cs_null = 0,

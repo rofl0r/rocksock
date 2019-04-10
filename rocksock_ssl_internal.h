@@ -15,21 +15,19 @@ int rocksock_ssl_pending(rocksock *sock);
    in your CFLAGS.
    for openssl use -DUSE_SSL and -DUSE_OPENSSL.
  */
+#ifdef USE_SSL
 
-// skip the following, if USE_SSL is not given in CFLAGS
-//RcB: SKIPUON "USE_SSL"
-
-// skip openssl impl if USE_CYASSL was given.
-//RcB: SKIPON "USE_CYASSL"
-//RcB: DEP "rocksock_openssl.c"
-//RcB: SKIPOFF "USE_CYASSL"
-
-// skip cyassl impl if USE_CYASSL was not given.
-//RcB: SKIPUON "USE_CYASSL"
-//RcB: DEP "rocksock_cyassl.c"
-//RcB: SKIPUOFF "USE_CYASSL"
-
-//RcB: SKIPUOFF "USE_SSL"
-
+#ifdef USE_CYASSL
+#pragma RcB2 DEP "rocksock_cyassl.c"
+#elif defined(USE_OPENSSL)
+#pragma RcB2 DEP "rocksock_openssl.c"
+#else
+#error "need to define one of USE_OPENSSL or USE_CYASSL with -DUSE_SSL"
 #endif
 
+#else
+#warning "compiling without SSL support"
+#pragma RcB2 DEP "rocksock_ssl.c"
+#endif
+
+#endif

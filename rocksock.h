@@ -142,14 +142,15 @@ void rocksock_free(rocksock* s);
 
 #endif
 
-//RcB: DEP "rocksock.c"
-//RcB: DEP "rocksock_add_proxy.c"
-//RcB: DEP "rocksock_add_proxy_fromstring.c"
-//RcB: DEP "rocksock_error.c"
-//RcB: DEP "rocksock_strerror.c"
-//RcB: DEP "rocksock_strerror_type.c"
-//RcB: DEP "rocksock_strerror_detailed.c"
-//RcB: DEP "rocksock_dynamic.c"
-//RcB: DEP "rocksock_readline.c"
-//RcB: DEP "rocksock_peek.c"
+#pragma RcB2 DEP "rocksock.c"
+#pragma RcB2 DEP "rocksock_add_proxy.c"
+#pragma RcB2 DEP "rocksock_add_proxy_fromstring.c"
+#pragma RcB2 DEP "rocksock_error.c"
+#pragma RcB2 DEP "rocksock_strerror.c"
+#pragma RcB2 DEP "rocksock_strerror_type.c"
+#pragma RcB2 DEP "rocksock_strerror_detailed.c"
+#pragma RcB2 DEP "rocksock_dynamic.c"
+#pragma RcB2 DEP "rocksock_readline.c"
+#pragma RcB2 DEP "rocksock_peek.c"
+#pragma RcB2 DEP "rocksock_ssl.c"
 

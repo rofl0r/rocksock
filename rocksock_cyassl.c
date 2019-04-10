@@ -15,7 +15,7 @@
 #define ROCKSOCK_FILENAME __FILE__
 #endif
 
-//RcB: LINK "-lwolfssl"
+#pragma RcB2 LINK "-lwolfssl"
 
 void rocksock_init_ssl(void) {
 	CyaSSL_Init();

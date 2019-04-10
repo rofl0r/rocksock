@@ -30,5 +30,5 @@ enum rsirc_event {
 };
 #endif
 
-//RcB: DEP "rsirc.c"
+#pragma RcB2 DEP "rsirc.c"
 
