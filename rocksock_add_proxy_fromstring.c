@@ -52,7 +52,7 @@ int rocksock_add_proxy_fromstring(rocksock* sock, const char *proxystring) {
 	   proxystring[next_token++] != ':' ||
 	   proxystring[next_token++] != '/' ||
 	   proxystring[next_token++] != '/') goto inv_string;
-	const char *at = strchr(proxystring+next_token, '@');
+	const char *at = strrchr(proxystring+next_token, '@');
 	if(at) {
 		if(proxytype == RS_PT_SOCKS4)
 			return MKERR(sock, RS_E_SOCKS4_NOAUTH);
